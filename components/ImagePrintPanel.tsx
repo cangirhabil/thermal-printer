@@ -136,7 +136,7 @@ export default function ImagePrintPanel() {
         <div
           className={`relative border-2 border-dashed rounded-lg p-8 transition-all ${
             dragActive
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/20"
+              ? "border-green-500 bg-green-50 dark:bg-green-950/20"
               : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
           }`}
           onDragEnter={handleDrag}
@@ -158,8 +158,8 @@ export default function ImagePrintPanel() {
               htmlFor="image-upload"
               className="flex flex-col items-center justify-center cursor-pointer"
             >
-              <div className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
-                <Upload className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+              <div className="p-4 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                <Upload className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
               <p className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Görsel yüklemek için tıklayın veya sürükleyin
@@ -220,7 +220,7 @@ export default function ImagePrintPanel() {
         <Button
           onClick={handlePrint}
           disabled={!imageData || printing}
-          className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className="flex-1 h-12 text-base font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
           size="lg"
         >
           {printing ? (
@@ -251,17 +251,17 @@ export default function ImagePrintPanel() {
 
       {/* Bilgilendirme */}
       {imageData && (
-        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
-                <ImageIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded">
+                <ImageIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 space-y-1">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
                   Görsel Hazır
                 </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+                <p className="text-xs text-green-700 dark:text-green-300">
                   Görsel otomatik olarak termal yazıcı formatına dönüştürülecek
                   ve yazdırılacaktır.
                 </p>

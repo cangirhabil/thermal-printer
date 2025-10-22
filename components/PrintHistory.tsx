@@ -39,7 +39,7 @@ export default function PrintHistory() {
       case "error":
         return <XCircle className="w-4 h-4 text-red-500" />;
       default:
-        return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
+        return <Loader2 className="w-4 h-4 text-green-500 animate-spin" />;
     }
   };
 
@@ -84,7 +84,7 @@ export default function PrintHistory() {
               <div key={item.id}>
                 <div className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg transition-colors">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded">
                       {getTypeIcon(item.type)}
                     </div>
                     <div className="flex-1">

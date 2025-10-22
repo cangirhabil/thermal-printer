@@ -68,7 +68,7 @@ export default function PrinterStatusCard({
 
   const getStatusIcon = () => {
     if (status.loading) {
-      return <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />;
+      return <Loader2 className="w-12 h-12 text-green-500 animate-spin" />;
     }
     if (status.connected) {
       return <CheckCircle2 className="w-12 h-12 text-green-500" />;
@@ -124,7 +124,7 @@ export default function PrinterStatusCard({
   };
 
   return (
-    <Card className="shadow-lg border-2 border-blue-100 dark:border-blue-900">
+    <Card className="shadow-lg border-2 border-green-100 dark:border-green-900">
       <CardHeader>
         <CardTitle className="text-lg flex items-center justify-between">
           <span>Yazıcı Durumu</span>
@@ -240,7 +240,7 @@ export default function PrinterStatusCard({
               status.type?.toLowerCase().includes("usb") ||
               status.type?.toLowerCase().includes("serial")
                 ? "bg-green-50 dark:bg-green-950/20 border-2 border-green-500"
-                : "bg-blue-50 dark:bg-blue-950/20"
+                : "bg-green-50 dark:bg-green-950/20"
             }`}
           >
             <UsbIcon
@@ -249,7 +249,7 @@ export default function PrinterStatusCard({
                 status.type?.toLowerCase().includes("usb") ||
                 status.type?.toLowerCase().includes("serial")
                   ? "text-green-600 dark:text-green-400"
-                  : "text-blue-600 dark:text-blue-400"
+                  : "text-green-600 dark:text-green-400"
               }`}
             />
             <p className="text-xs font-medium">COM Port</p>
@@ -260,7 +260,7 @@ export default function PrinterStatusCard({
               status.type?.toLowerCase().includes("network") ||
               status.type?.toLowerCase().includes("ethernet")
                 ? "bg-green-50 dark:bg-green-950/20 border-2 border-green-500"
-                : "bg-purple-50 dark:bg-purple-950/20"
+                : "bg-green-50 dark:bg-green-950/20"
             }`}
           >
             <Wifi
@@ -268,7 +268,7 @@ export default function PrinterStatusCard({
                 status.type?.toLowerCase().includes("network") ||
                 status.type?.toLowerCase().includes("ethernet")
                   ? "text-green-600 dark:text-green-400"
-                  : "text-purple-600 dark:text-purple-400"
+                  : "text-green-600 dark:text-green-400"
               }`}
             />
             <p className="text-xs font-medium">LAN</p>

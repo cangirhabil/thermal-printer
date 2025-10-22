@@ -354,14 +354,14 @@ export default function TextPrintPanel() {
 
       {/* Önizleme */}
       {textData && (
-        <Card className="bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-800">
+        <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded">
-                <FileText className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded">
+                <FileText className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
                   Metin Önizleme
                 </p>
                 <div
@@ -394,7 +394,7 @@ export default function TextPrintPanel() {
                     <div key={i}>{line || "\u00A0"}</div>
                   ))}
                 </div>
-                <p className="text-xs text-purple-700 dark:text-purple-300">
+                <p className="text-xs text-green-700 dark:text-green-300">
                   Font: {fontType}, Boyut: {fontSize}, Hizalama:{" "}
                   {alignment === "left"
                     ? "Sol"

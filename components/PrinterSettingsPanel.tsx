@@ -144,17 +144,17 @@ export default function PrinterSettingsPanel({
 
       {/* Otomatik Mod Bilgisi */}
       {connectionType === "auto" && (
-        <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+        <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded">
-                <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded">
+                <Info className="w-5 h-5 text-green-600 dark:text-green-400" />
               </div>
               <div className="flex-1 space-y-2">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                <p className="text-sm font-medium text-green-900 dark:text-green-100">
                   Otomatik Algılama Aktif
                 </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+                <p className="text-xs text-green-700 dark:text-green-300">
                   Sistem, yazıcıyı otomatik olarak USB, Serial, Network ve
                   Windows yazıcıları arasında arayacak ve ilk bulunanı
                   kullanacaktır. Çoğu kullanım için önerilir.

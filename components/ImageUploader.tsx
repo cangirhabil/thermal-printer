@@ -86,8 +86,8 @@ export default function ImageUploader({
           onClick={handleButtonClick}
           className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-all ${
             dragActive
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : "border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500"
+              ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+              : "border-gray-300 dark:border-gray-600 hover:border-green-400 dark:hover:border-green-500"
           }`}
         >
           <input
@@ -193,11 +193,11 @@ export default function ImageUploader({
         </p>
       </div>
 
-      <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-        <h3 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+      <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+        <h3 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
           💡 İpuçları
         </h3>
-        <ul className="text-sm text-blue-700 dark:text-blue-400 space-y-1">
+        <ul className="text-sm text-green-700 dark:text-green-400 space-y-1">
           <li>• Termal yazıcılar için siyah-beyaz görsel kullanın</li>
           <li>• Maksimum genişlik: 80mm (576 piksel)</li>
           <li>• Net ve yüksek kontrastlı görseller en iyi sonucu verir</li>

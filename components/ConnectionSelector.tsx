@@ -113,7 +113,7 @@ export default function ConnectionSelector({
             onClick={() => handleConnectionTypeChange("network")}
             className={`px-4 py-3 rounded-lg font-medium transition-all ${
               settings.connectionType === "network"
-                ? "bg-blue-500 text-white shadow-lg scale-105"
+                ? "bg-green-500 text-white shadow-lg scale-105"
                 : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             }`}
           >
@@ -139,7 +139,7 @@ export default function ConnectionSelector({
             onClick={() => handleConnectionTypeChange("windows-printer")}
             className={`px-4 py-3 rounded-lg font-medium transition-all ${
               settings.connectionType === "windows-printer"
-                ? "bg-purple-500 text-white shadow-lg scale-105"
+                ? "bg-green-500 text-white shadow-lg scale-105"
                 : "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600"
             }`}
           >
@@ -173,7 +173,7 @@ export default function ConnectionSelector({
             <button
               onClick={loadPorts}
               disabled={loading}
-              className="text-sm text-blue-500 hover:text-blue-600 disabled:text-gray-400"
+              className="text-sm text-green-500 hover:text-green-600 disabled:text-gray-400"
             >
               {loading ? "Yükleniyor..." : "🔄 Yenile"}
             </button>

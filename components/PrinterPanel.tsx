@@ -82,7 +82,7 @@ export default function PrinterPanel() {
               ? "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
               : message.type === "error"
               ? "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300"
-              : "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300"
+              : "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300"
           }`}
         >
           <p className="font-medium">{message.text}</p>
@@ -90,14 +90,14 @@ export default function PrinterPanel() {
       )}
 
       {/* Ana Bilgi Kartı */}
-      <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg shadow-lg p-6">
+      <div className="bg-gradient-to-r from-green-500 to-purple-600 rounded-lg shadow-lg p-6">
         <div className="text-white text-center">
           <h2 className="text-2xl font-bold mb-2">🤖 Akıllı Termal Yazıcı</h2>
-          <p className="text-blue-100">
+          <p className="text-green-100">
             Görsel veya metin yükleyin, sistem otomatik olarak yazıcıyı bulup
             yazdıracak
           </p>
-          <p className="text-sm text-blue-200 mt-2">
+          <p className="text-sm text-green-200 mt-2">
             ✨ Hiçbir ayar gerekmez - tamamen otomatik!
           </p>
         </div>

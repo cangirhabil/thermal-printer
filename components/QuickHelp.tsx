@@ -54,7 +54,7 @@ export default function QuickHelp() {
             key={index}
             className="flex gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
           >
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded flex-shrink-0">
+            <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded flex-shrink-0">
               {item.icon}
             </div>
             <div className="flex-1">

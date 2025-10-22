@@ -29,6 +29,45 @@ interface TextOptions {
 }
 
 // ==========================================
+// Floyd-Steinberg Dithering Algorithm
+// Gri tonları siyah-beyaz nokta patternlerine dönüştürür
+// ==========================================
+function applyFloydSteinbergDithering(
+  imageData: Uint8Array,
+  width: number,
+  height: number
+): Uint8Array {
+  const data = new Uint8Array(imageData);
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      const oldPixel = data[idx];
+      const newPixel = oldPixel < 128 ? 0 : 255;
+      data[idx] = newPixel;
+
+      const quantError = oldPixel - newPixel;
+
+      // Hatayı komşu pixellere dağıt
+      if (x + 1 < width) {
+        data[idx + 1] += (quantError * 7) / 16;
+      }
+      if (y + 1 < height) {
+        if (x > 0) {
+          data[idx + width - 1] += (quantError * 3) / 16;
+        }
+        data[idx + width] += (quantError * 5) / 16;
+        if (x + 1 < width) {
+          data[idx + width + 1] += (quantError * 1) / 16;
+        }
+      }
+    }
+  }
+
+  return data;
+}
+
+// ==========================================
 // COM PORT - Serial Communication (Priority 1)
 // PowerShell ile güvenli yazdırma
 // ==========================================
@@ -58,6 +97,7 @@ async function trySerialPorts(
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
+          // Önce grayscale ve resize
           const processedImage = await sharp(imageBuffer)
             .resize(576, null, {
               fit: "inside",
@@ -66,25 +106,29 @@ async function trySerialPorts(
             })
             .grayscale()
             .normalise()
-            .threshold(128, { greyscale: false })
-            .toBuffer();
-
-          const rawImage = await sharp(processedImage)
             .raw()
             .toBuffer({ resolveWithObject: true });
 
-          const { data: rawData, info } = rawImage;
+          const { data: rawData, info } = processedImage;
           const width = Math.min(info.width, 576);
           const height = info.height;
-          const bytesPerLine = Math.ceil(width / 8);
 
+          // Floyd-Steinberg dithering uygula
+          const ditheredData = applyFloydSteinbergDithering(
+            new Uint8Array(rawData),
+            width,
+            height
+          );
+
+          const bytesPerLine = Math.ceil(width / 8);
           bitmapBuffer = Buffer.alloc(bytesPerLine * height);
           bitmapBuffer.fill(0);
 
+          // Dithered veriyi bitmap'e dönüştür
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-              const idx = (y * info.width + x) * info.channels;
-              const pixelValue = rawData[idx];
+              const idx = y * width + x;
+              const pixelValue = ditheredData[idx];
 
               if (pixelValue < 128) {
                 const byteIndex = y * bytesPerLine + Math.floor(x / 8);
@@ -358,6 +402,7 @@ async function tryNetwork(
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
+          // Önce grayscale ve resize
           const processedImage = await sharp(imageBuffer)
             .resize(576, null, {
               fit: "inside",
@@ -366,25 +411,29 @@ async function tryNetwork(
             })
             .grayscale()
             .normalise()
-            .threshold(128, { greyscale: false })
-            .toBuffer();
-
-          const rawImage = await sharp(processedImage)
             .raw()
             .toBuffer({ resolveWithObject: true });
 
-          const { data: rawData, info } = rawImage;
+          const { data: rawData, info } = processedImage;
           const width = Math.min(info.width, 576);
           const height = info.height;
-          const bytesPerLine = Math.ceil(width / 8);
 
+          // Floyd-Steinberg dithering uygula
+          const ditheredData = applyFloydSteinbergDithering(
+            new Uint8Array(rawData),
+            width,
+            height
+          );
+
+          const bytesPerLine = Math.ceil(width / 8);
           const bitmapBuffer = Buffer.alloc(bytesPerLine * height);
           bitmapBuffer.fill(0);
 
+          // Dithered veriyi bitmap'e dönüştür
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-              const idx = (y * info.width + x) * info.channels;
-              const pixelValue = rawData[idx];
+              const idx = y * width + x;
+              const pixelValue = ditheredData[idx];
 
               if (pixelValue < 128) {
                 const byteIndex = y * bytesPerLine + Math.floor(x / 8);

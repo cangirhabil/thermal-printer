@@ -1,0 +1,930 @@
+import { NextRequest, NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
+import * as net from "net";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+import sharp from "sharp";
+
+const execAsync = promisify(exec);
+
+// USB cihaz bilgileri - KP-302H için doğrulanmış VID/PID
+const KNOWN_USB_PRINTERS = [
+  { vendorId: 0x0fe6, productId: 0x811e, name: "KP-302H" }, // ICS Advent - DOĞRULANDI
+  { vendorId: 0x0519, productId: 0x0003, name: "Generic Thermal" },
+  { vendorId: 0x0483, productId: 0x5740, name: "USB Printer" },
+];
+
+interface PrintAttempt {
+  method: string;
+  details: string;
+  success: boolean;
+  error?: string;
+}
+
+// Platform bağımsız RAW yazıcı (Windows: KPOS_80, Linux: /dev/usb/lp0 veya CUPS)
+async function tryRawPrinter(
+  imageData: string | null,
+  textData: string
+): Promise<PrintAttempt> {
+  try {
+    console.log("🖨️ Platform bağımsız RAW yazıcı deneniyor...");
+
+    // Platform kontrolü
+    const isWindows = process.platform === "win32";
+    const isLinux = process.platform === "linux";
+    const isMac = process.platform === "darwin";
+
+    console.log(`📟 Platform: ${process.platform}`);
+
+    // Bitmap hazırla
+    let escposData: Buffer | null = null;
+
+    if (imageData || textData) {
+      const commands: number[] = [];
+
+      // Initialize
+      commands.push(0x1b, 0x40); // ESC @
+
+      // Görsel işle
+      if (imageData) {
+        const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+        const imageBuffer = Buffer.from(base64Data, "base64");
+
+        const processedImage = await sharp(imageBuffer)
+          .resize(576, null, { fit: "inside", withoutEnlargement: false })
+          .grayscale()
+          .normalise()
+          .raw()
+          .toBuffer({ resolveWithObject: true });
+
+        const { data: rawData, info } = processedImage;
+        const width = 576;
+        const height = info.height;
+        const bytesPerLine = Math.ceil(width / 8);
+
+        const bitmapBuffer = Buffer.alloc(bytesPerLine * height);
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const idx = y * width + x;
+            const pixelValue = rawData[idx];
+
+            if (pixelValue < 128) {
+              const byteIndex = y * bytesPerLine + Math.floor(x / 8);
+              const bitIndex = 7 - (x % 8);
+              bitmapBuffer[byteIndex] |= 1 << bitIndex;
+            }
+          }
+        }
+
+        const xL = width & 0xff;
+        const xH = width >> 8;
+        const yL = height & 0xff;
+        const yH = height >> 8;
+
+        // GS v 0 - raster bitmap
+        commands.push(0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH);
+        commands.push(...Array.from(bitmapBuffer));
+      }
+
+      // Metin ekle
+      if (textData) {
+        const textBytes = Buffer.from(textData + "\n\n", "utf8");
+        commands.push(...Array.from(textBytes));
+      }
+
+      // Cut paper
+      commands.push(0x1d, 0x56, 0x00); // GS V 0
+
+      escposData = Buffer.from(commands);
+    }
+
+    if (!escposData) {
+      return {
+        method: "RAW Printer",
+        details: "Veri yok",
+        success: false,
+        error: "Yazdırılacak veri hazırlanamadı",
+      };
+    }
+
+    // Platform bazlı yazdırma
+    const escposArray = new Uint8Array(escposData);
+
+    if (isWindows) {
+      // Windows: KPOS_80 yazıcısına RAW data gönder
+      const tempFile = path.join(os.tmpdir(), `raw-print-${Date.now()}.prn`);
+      fs.writeFileSync(tempFile, escposArray);
+
+      try {
+        const { stdout, stderr } = await execAsync(
+          `powershell -Command "Get-Content -Path '${tempFile}' -Encoding Byte -ReadCount 0 | Set-Content -Path '\\\\?\\UNC\\localhost\\KPOS_80' -Encoding Byte"`,
+          { timeout: 10000 }
+        );
+
+        fs.unlinkSync(tempFile);
+
+        console.log("✅ Windows RAW yazdırma başarılı!");
+        return {
+          method: "RAW Printer (Windows)",
+          details: "KPOS_80",
+          success: true,
+        };
+      } catch (error: any) {
+        fs.unlinkSync(tempFile);
+        console.log(`❌ Windows RAW hatası: ${error.message}`);
+
+        // Alternatif: copy komutu ile dene
+        try {
+          const tempFile2 = path.join(
+            os.tmpdir(),
+            `raw-print-${Date.now()}.prn`
+          );
+          fs.writeFileSync(tempFile2, escposArray);
+
+          await execAsync(`copy /b "${tempFile2}" "\\\\localhost\\KPOS_80"`, {
+            timeout: 10000,
+          });
+          fs.unlinkSync(tempFile2);
+
+          console.log("✅ Windows COPY komutu ile başarılı!");
+          return {
+            method: "RAW Printer (Windows/COPY)",
+            details: "KPOS_80",
+            success: true,
+          };
+        } catch (e: any) {
+          console.log(`❌ COPY komutu da başarısız: ${e.message}`);
+        }
+      }
+    } else if (isLinux) {
+      // Linux: /dev/usb/lp0 veya CUPS
+      const devicePaths = ["/dev/usb/lp0", "/dev/lp0", "/dev/usblp0"];
+
+      for (const devicePath of devicePaths) {
+        try {
+          fs.writeFileSync(devicePath, escposArray);
+          console.log(`✅ Linux RAW yazdırma başarılı: ${devicePath}`);
+          return {
+            method: "RAW Printer (Linux)",
+            details: devicePath,
+            success: true,
+          };
+        } catch (error: any) {
+          console.log(`❌ ${devicePath} hatası: ${error.message}`);
+          continue;
+        }
+      }
+
+      // CUPS ile dene
+      try {
+        const tempFile = `/tmp/thermal-print-${Date.now()}.prn`;
+        fs.writeFileSync(tempFile, escposArray);
+        await execAsync(`lp -d kp-302h "${tempFile}"`, { timeout: 10000 });
+        fs.unlinkSync(tempFile);
+
+        console.log("✅ Linux CUPS yazdırma başarılı!");
+        return {
+          method: "RAW Printer (Linux/CUPS)",
+          details: "kp-302h",
+          success: true,
+        };
+      } catch (error: any) {
+        console.log(`❌ CUPS hatası: ${error.message}`);
+      }
+    } else if (isMac) {
+      // macOS: CUPS kullan
+      try {
+        const tempFile = `/tmp/thermal-print-${Date.now()}.prn`;
+        fs.writeFileSync(tempFile, escposArray);
+        await execAsync(`lp -d KP-302H "${tempFile}"`, { timeout: 10000 });
+        fs.unlinkSync(tempFile);
+
+        console.log("✅ macOS CUPS yazdırma başarılı!");
+        return {
+          method: "RAW Printer (macOS/CUPS)",
+          details: "KP-302H",
+          success: true,
+        };
+      } catch (error: any) {
+        console.log(`❌ macOS CUPS hatası: ${error.message}`);
+      }
+    }
+
+    return {
+      method: "RAW Printer",
+      details: `Platform: ${process.platform}`,
+      success: false,
+      error: "Hiçbir RAW yazıcı yöntemi çalışmadı",
+    };
+  } catch (error: any) {
+    console.log(`❌ RAW Printer hatası: ${error.message}`);
+    return {
+      method: "RAW Printer",
+      details: "Hata",
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// Direkt USB yazdırma (Windows için PowerShell USB RAW yazdırma)
+async function tryDirectUSB(
+  imageData: string | null,
+  textData: string
+): Promise<PrintAttempt> {
+  try {
+    console.log("🔌 USB yazıcı aranıyor (Windows USB/USBPRINT)...");
+
+    // Önce USB cihazlarını kontrol et (Class filtresi olmadan)
+    let stdout = "";
+    try {
+      const result = await execAsync(
+        "powershell -Command \"Get-PnpDevice | Where-Object {$_.Status -eq 'OK' -and ($_.FriendlyName -like '*KP*' -or $_.FriendlyName -like '*302*')} | Select-Object FriendlyName,InstanceId,Class | ConvertTo-Json\""
+      );
+      stdout = result.stdout;
+    } catch (error: any) {
+      console.log(
+        "⚠️ USB cihaz tarama hatası, Windows yazıcı listesini deniyorum..."
+      );
+
+      // Alternatif: Doğrudan KPOS_80 yazıcısını kullan
+      try {
+        const printerResult = await execAsync(
+          "powershell -Command \"Get-Printer | Where-Object {$_.Name -like '*KPOS*' -or $_.Name -like '*KP*'} | Select-Object Name | ConvertTo-Json\""
+        );
+
+        if (printerResult.stdout.trim()) {
+          const printers = JSON.parse(printerResult.stdout);
+          const printerList = Array.isArray(printers) ? printers : [printers];
+
+          if (printerList.length > 0) {
+            const printerName = printerList[0].Name;
+            console.log(`✅ Windows yazıcı bulundu: ${printerName}`);
+            // Windows yazıcı üzerinden yazdırmayı dene
+            return await tryWindowsPrinter(imageData, textData);
+          }
+        }
+      } catch (e) {
+        console.log("❌ Windows yazıcı da bulunamadı");
+      }
+    }
+
+    if (!stdout || !stdout.trim()) {
+      console.log("❌ USB yazıcı bulunamadı");
+      return {
+        method: "Direct USB",
+        details: "USB yazıcı bulunamadı",
+        success: false,
+        error: "KP-302H USB cihazı bulunamadı",
+      };
+    }
+
+    const devices = JSON.parse(stdout);
+    const deviceList = Array.isArray(devices) ? devices : [devices];
+
+    console.log(`📱 ${deviceList.length} USB yazıcı bulundu`);
+
+    for (const device of deviceList) {
+      const deviceName = device.FriendlyName;
+      console.log(`🖨️ Deneniyor: ${deviceName}`);
+
+      try {
+        // Görsel işleme
+        let bitmapBuffer: Buffer | null = null;
+        let width = 576;
+        let height = 0;
+
+        if (imageData) {
+          const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          const processedImage = await sharp(imageBuffer)
+            .resize(576, null, { fit: "inside", withoutEnlargement: false })
+            .grayscale()
+            .normalise()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          const { data: rawData, info } = processedImage;
+          width = 576;
+          height = info.height;
+          const bytesPerLine = Math.ceil(width / 8);
+
+          bitmapBuffer = Buffer.alloc(bytesPerLine * height);
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = y * width + x;
+              const pixelValue = rawData[idx];
+
+              if (pixelValue < 128) {
+                const byteIndex = y * bytesPerLine + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+                bitmapBuffer[byteIndex] |= 1 << bitIndex;
+              }
+            }
+          }
+        }
+
+        // USB Raw yazdırma için C# script kullan
+        const bitmapPath = bitmapBuffer
+          ? path.join(os.tmpdir(), `usb-bitmap-${Date.now()}.bin`)
+          : "";
+        if (bitmapBuffer) {
+          fs.writeFileSync(bitmapPath, new Uint8Array(bitmapBuffer));
+        }
+
+        const csScriptPath = path.join(
+          os.tmpdir(),
+          `usb-print-${Date.now()}.cs`
+        );
+
+        const xL = width & 0xff;
+        const xH = width >> 8;
+        const yL = height & 0xff;
+        const yH = height >> 8;
+
+        const imageCommand = bitmapBuffer
+          ? `
+            // Initialize
+            data.Add(0x1B); data.Add(0x40); // ESC @
+            
+            // Image command - GS v 0
+            data.Add(0x1D); data.Add(0x76); data.Add(0x30); data.Add(0x00);
+            data.Add(${xL}); data.Add(${xH}); data.Add(${yL}); data.Add(${yH});
+            
+            // Bitmap data
+            byte[] bitmapData = System.IO.File.ReadAllBytes(@"${bitmapPath.replace(
+              /\\/g,
+              "\\\\"
+            )}");
+            data.AddRange(bitmapData);
+          `
+          : "";
+
+        const textCommand = textData
+          ? `
+            // Text
+            byte[] textBytes = System.Text.Encoding.UTF8.GetBytes("${textData
+              .replace(/"/g, '\\"')
+              .replace(/\n/g, "\\n")}\\n\\n");
+            data.AddRange(textBytes);
+          `
+          : "";
+
+        const csScript = `
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Runtime.InteropServices;
+
+class USBPrinter {
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+    static extern IntPtr CreateFile(string lpFileName, uint dwDesiredAccess, uint dwShareMode, 
+        IntPtr lpSecurityAttributes, uint dwCreationDisposition, uint dwFlagsAndAttributes, IntPtr hTemplateFile);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool WriteFile(IntPtr hFile, byte[] lpBuffer, uint nNumberOfBytesToWrite, 
+        out uint lpNumberOfBytesWritten, IntPtr lpOverlapped);
+    
+    [DllImport("kernel32.dll", SetLastError = true)]
+    static extern bool CloseHandle(IntPtr hObject);
+    
+    const uint GENERIC_WRITE = 0x40000000;
+    const uint OPEN_EXISTING = 3;
+    
+    static void Main() {
+        try {
+            List<byte> data = new List<byte>();
+            
+            ${imageCommand}
+            ${textCommand}
+            
+            // Cut paper
+            data.Add(0x1D); data.Add(0x56); data.Add(0x00); // GS V 0
+            
+            // USB cihaz yolunu bul (KP-302H için)
+            string usbPath = "\\\\\\\\.\\\\USBPRINT001";
+            
+            // Alternatif yolları dene
+            string[] possiblePaths = new string[] {
+                "\\\\\\\\.\\\\USBPRINT001",
+                "\\\\\\\\.\\\\USB001",
+                "\\\\\\\\.\\\\USB002",
+                "\\\\\\\\.\\\\USB003"
+            };
+            
+            IntPtr handle = IntPtr.Zero;
+            string workingPath = null;
+            
+            foreach (string testPath in possiblePaths) {
+                handle = CreateFile(testPath, GENERIC_WRITE, 0, IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                if (handle.ToInt64() != -1) {
+                    workingPath = testPath;
+                    break;
+                }
+            }
+            
+            if (handle.ToInt64() == -1) {
+                Console.Error.WriteLine("USB cihaz açılamadı");
+                Environment.Exit(1);
+            }
+            
+            byte[] buffer = data.ToArray();
+            uint bytesWritten;
+            
+            if (!WriteFile(handle, buffer, (uint)buffer.Length, out bytesWritten, IntPtr.Zero)) {
+                Console.Error.WriteLine("Yazma hatası");
+                CloseHandle(handle);
+                Environment.Exit(1);
+            }
+            
+            CloseHandle(handle);
+            Console.WriteLine("SUCCESS:" + workingPath);
+            Environment.Exit(0);
+        } catch (Exception ex) {
+            Console.Error.WriteLine("Hata: " + ex.Message);
+            Environment.Exit(1);
+        }
+    }
+}
+`;
+
+        fs.writeFileSync(csScriptPath, csScript, "utf8");
+
+        // C# script'i derle ve çalıştır
+        const { stdout: csOutput, stderr: csError } = await execAsync(
+          `powershell -Command "Add-Type -TypeDefinition (Get-Content '${csScriptPath}' -Raw) -Language CSharp; [USBPrinter]::Main()"`,
+          { timeout: 10000 }
+        );
+
+        // Cleanup
+        try {
+          if (bitmapPath) fs.unlinkSync(bitmapPath);
+        } catch {}
+        try {
+          fs.unlinkSync(csScriptPath);
+        } catch {}
+
+        if (csOutput.includes("SUCCESS")) {
+          const usbPath = csOutput.split(":")[1]?.trim() || "USB";
+          console.log(`✅ USB yazdırma başarılı: ${deviceName} (${usbPath})`);
+          return {
+            method: "Direct USB",
+            details: `${deviceName} (${usbPath})`,
+            success: true,
+          };
+        } else if (csError) {
+          console.log(`❌ ${deviceName} hatası: ${csError}`);
+        }
+      } catch (error: any) {
+        console.log(`❌ ${deviceName} başarısız: ${error.message}`);
+        continue;
+      }
+    }
+
+    return {
+      method: "Direct USB",
+      details: "USB yazdırma başarısız",
+      success: false,
+      error: "Tüm USB cihazları denendi, hiçbiri çalışmadı",
+    };
+  } catch (error: any) {
+    console.log(`❌ USB hata: ${error.message}`);
+    return {
+      method: "Direct USB",
+      details: "USB erişim hatası",
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// USB/Serial portları dene
+async function trySerialPorts(
+  imageData: string | null,
+  textData: string
+): Promise<PrintAttempt> {
+  try {
+    const { SerialPort } = await import("serialport");
+    const ports = await SerialPort.list();
+
+    console.log(`🔍 ${ports.length} serial port bulundu`);
+
+    // Her portu dene
+    for (const portInfo of ports) {
+      const portPath = portInfo.path;
+      console.log(`🔌 Port deneniyor: ${portPath}`);
+
+      try {
+        // Görsel işleme
+        let bitmapBuffer: Buffer | null = null;
+        if (imageData) {
+          const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          const processedImage = await sharp(imageBuffer)
+            .resize(576, null, { fit: "inside", withoutEnlargement: false })
+            .grayscale()
+            .normalise()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          const { data: rawData, info } = processedImage;
+          const width = 576;
+          const height = info.height;
+          const bytesPerLine = Math.ceil(width / 8);
+
+          bitmapBuffer = Buffer.alloc(bytesPerLine * height);
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = y * width + x;
+              const pixelValue = rawData[idx];
+
+              if (pixelValue < 128) {
+                const byteIndex = y * bytesPerLine + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+                bitmapBuffer[byteIndex] |= 1 << bitIndex;
+              }
+            }
+          }
+        }
+
+        // PowerShell script oluştur
+        const bitmapPath = path.join(
+          os.tmpdir(),
+          `thermal-auto-${Date.now()}.bin`
+        );
+        const scriptPath = path.join(
+          os.tmpdir(),
+          `thermal-auto-${Date.now()}.ps1`
+        );
+
+        if (bitmapBuffer) {
+          fs.writeFileSync(bitmapPath, new Uint8Array(bitmapBuffer));
+        }
+
+        const escInit = "1B 40"; // ESC @
+        const cutPaper = "1D 56 00"; // GS V 0
+
+        let imageCommands = "";
+        if (bitmapBuffer) {
+          const width = 576;
+          const height = Math.floor(bitmapBuffer.length / Math.ceil(width / 8));
+          const xL = width & 0xff;
+          const xH = width >> 8;
+          const yL = height & 0xff;
+          const yH = height >> 8;
+
+          imageCommands = `
+  # Görsel yazdır
+  $imageCommand = [byte[]](0x1D, 0x76, 0x30, 0x00, ${xL}, ${xH}, ${yL}, ${yH})
+  $port.Write($imageCommand, 0, $imageCommand.Length)
+  Start-Sleep -Milliseconds 50
+  
+  $bitmapData = [System.IO.File]::ReadAllBytes("${bitmapPath.replace(
+    /\\/g,
+    "\\\\"
+  )}")
+  $port.Write($bitmapData, 0, $bitmapData.Length)
+  Start-Sleep -Milliseconds 100
+`;
+        }
+
+        let textCommands = "";
+        if (textData) {
+          const escapedText = textData.replace(/"/g, '`"').replace(/\$/g, "`$");
+          textCommands = `
+  # Metin yazdır
+  $textBytes = [System.Text.Encoding]::GetEncoding(857).GetBytes("${escapedText}\n\n")
+  $port.Write($textBytes, 0, $textBytes.Length)
+  Start-Sleep -Milliseconds 100
+`;
+        }
+
+        const psScript = `
+$ErrorActionPreference = "Stop"
+
+try {
+    $port = New-Object System.IO.Ports.SerialPort("${portPath}", 9600, "None", 8, "One")
+    $port.Handshake = [System.IO.Ports.Handshake]::RequestToSend
+    $port.ReadTimeout = 1000
+    $port.WriteTimeout = 1000
+    
+    $port.Open()
+    
+    if (-not $port.IsOpen) {
+        Write-Error "Port açılamadı"
+        exit 1
+    }
+    
+    # Initialize
+    $initBytes = [byte[]](${escInit
+      .split(" ")
+      .map((b) => `0x${b}`)
+      .join(", ")})
+    $port.Write($initBytes, 0, $initBytes.Length)
+    Start-Sleep -Milliseconds 50
+    ${imageCommands}${textCommands}
+    # Cut paper
+    $cutBytes = [byte[]](${cutPaper
+      .split(" ")
+      .map((b) => `0x${b}`)
+      .join(", ")})
+    $port.Write($cutBytes, 0, $cutBytes.Length)
+    Start-Sleep -Milliseconds 100
+    
+    $port.Close()
+    Write-Output "SUCCESS"
+    exit 0
+} catch {
+    Write-Error $_.Exception.Message
+    if ($port -and $port.IsOpen) {
+        $port.Close()
+    }
+    exit 1
+}
+`;
+
+        fs.writeFileSync(scriptPath, psScript, "utf8");
+
+        const { stdout, stderr } = await execAsync(
+          `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`,
+          { timeout: 10000 }
+        );
+
+        // Cleanup
+        try {
+          fs.unlinkSync(bitmapPath);
+        } catch {}
+        try {
+          fs.unlinkSync(scriptPath);
+        } catch {}
+
+        if (stdout.includes("SUCCESS")) {
+          console.log(`✅ ${portPath} başarılı!`);
+          return {
+            method: "Serial/USB",
+            details: portPath,
+            success: true,
+          };
+        }
+      } catch (error: any) {
+        console.log(`❌ ${portPath} başarısız: ${error.message}`);
+        continue;
+      }
+    }
+
+    return {
+      method: "Serial/USB",
+      details: "Hiçbir port çalışmadı",
+      success: false,
+      error: "Tüm portlar denendi, hiçbiri çalışmadı",
+    };
+  } catch (error: any) {
+    return {
+      method: "Serial/USB",
+      details: "SerialPort yüklenemedi",
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+// Network bağlantısını dene
+async function tryNetwork(
+  imageData: string | null,
+  textData: string
+): Promise<PrintAttempt> {
+  const ips = ["192.168.2.211", "192.168.1.100", "192.168.0.100"];
+  const ports = [9100, 9101, 9102];
+
+  for (const ip of ips) {
+    for (const port of ports) {
+      try {
+        console.log(`🌐 Network deneniyor: ${ip}:${port}`);
+
+        const socket = new net.Socket();
+        await new Promise<void>((resolve, reject) => {
+          socket.setTimeout(2000);
+          socket.on("connect", () => resolve());
+          socket.on("timeout", () => reject(new Error("Timeout")));
+          socket.on("error", (err) => reject(err));
+          socket.connect(port, ip);
+        });
+
+        // Bağlantı başarılı, yazdır
+        const escInit = new Uint8Array([0x1b, 0x40]); // ESC @
+        const cutPaper = new Uint8Array([0x1d, 0x56, 0x00]); // GS V 0
+
+        socket.write(escInit);
+
+        if (imageData) {
+          const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
+          const imageBuffer = Buffer.from(base64Data, "base64");
+
+          const processedImage = await sharp(imageBuffer)
+            .resize(576, null, { fit: "inside", withoutEnlargement: false })
+            .grayscale()
+            .normalise()
+            .raw()
+            .toBuffer({ resolveWithObject: true });
+
+          const { data: rawData, info } = processedImage;
+          const width = 576;
+          const height = info.height;
+          const bytesPerLine = Math.ceil(width / 8);
+
+          const bitmapBuffer = Buffer.alloc(bytesPerLine * height);
+
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const idx = y * width + x;
+              const pixelValue = rawData[idx];
+
+              if (pixelValue < 128) {
+                const byteIndex = y * bytesPerLine + Math.floor(x / 8);
+                const bitIndex = 7 - (x % 8);
+                bitmapBuffer[byteIndex] |= 1 << bitIndex;
+              }
+            }
+          }
+
+          const xL = width & 0xff;
+          const xH = width >> 8;
+          const yL = height & 0xff;
+          const yH = height >> 8;
+
+          const imageCommand = new Uint8Array([
+            0x1d,
+            0x76,
+            0x30,
+            0x00,
+            xL,
+            xH,
+            yL,
+            yH,
+          ]);
+          socket.write(imageCommand);
+          socket.write(new Uint8Array(bitmapBuffer));
+        }
+
+        if (textData) {
+          const textEncoder = new TextEncoder();
+          socket.write(textEncoder.encode(textData + "\n\n"));
+        }
+
+        socket.write(cutPaper);
+        socket.end();
+
+        console.log(`✅ Network ${ip}:${port} başarılı!`);
+        return {
+          method: "Network",
+          details: `${ip}:${port}`,
+          success: true,
+        };
+      } catch (error: any) {
+        console.log(`❌ Network ${ip}:${port} başarısız: ${error.message}`);
+        continue;
+      }
+    }
+  }
+
+  return {
+    method: "Network",
+    details: "Hiçbir network adresi çalışmadı",
+    success: false,
+    error: "Tüm network adresleri denendi",
+  };
+}
+
+// Windows yazıcıyı dene
+async function tryWindowsPrinter(
+  imageData: string | null,
+  textData: string
+): Promise<PrintAttempt> {
+  try {
+    console.log("🖨️ Windows yazıcıları deneniyor");
+
+    const { stdout } = await execAsync(
+      'powershell -Command "Get-Printer | Select-Object Name | ConvertTo-Json"'
+    );
+
+    const printers = JSON.parse(stdout);
+    const printerArray = Array.isArray(printers) ? printers : [printers];
+
+    for (const printer of printerArray) {
+      const printerName = printer.Name;
+      console.log(`🖨️ Windows yazıcı deneniyor: ${printerName}`);
+
+      try {
+        // Windows Printer desteklenmedi - bu yöntem devre dışı
+        console.log(`⚠️ Windows Printer API desteklenmiyor: ${printerName}`);
+        continue;
+      } catch (error: any) {
+        console.log(
+          `❌ Windows yazıcı ${printerName} başarısız: ${error.message}`
+        );
+        continue;
+      }
+    }
+
+    return {
+      method: "Windows Printer",
+      details: "Hiçbir yazıcı çalışmadı",
+      success: false,
+      error: "Tüm Windows yazıcıları denendi",
+    };
+  } catch (error: any) {
+    return {
+      method: "Windows Printer",
+      details: "Windows yazıcı listesi alınamadı",
+      success: false,
+      error: error.message,
+    };
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { imageData, textData } = await request.json();
+
+    console.log("========================================");
+    console.log("🤖 OTOMATİK YAZDIRMA BAŞLATILDI");
+    console.log("Görsel:", !!imageData);
+    console.log("Metin:", !!textData);
+    console.log("========================================");
+
+    const attempts: PrintAttempt[] = [];
+
+    // 1. RAW Printer (Platform bağımsız - Windows/Linux/macOS)
+    console.log("\n�️ 1. RAW PRINTER (KPOS_80) DENENIYOR...");
+    const rawResult = await tryRawPrinter(imageData, textData);
+    attempts.push(rawResult);
+    if (rawResult.success) {
+      return NextResponse.json({
+        success: true,
+        message: `✅ ${rawResult.method} üzerinden yazdırıldı: ${rawResult.details}`,
+        method: rawResult.method,
+        details: rawResult.details,
+        attempts,
+      });
+    }
+
+    // 2. Serial/COM portları dene
+    console.log("\n🔍 2. SERIAL/COM PORTLARI DENENIYOR...");
+    const serialResult = await trySerialPorts(imageData, textData);
+    attempts.push(serialResult);
+    if (serialResult.success) {
+      return NextResponse.json({
+        success: true,
+        message: `✅ ${serialResult.method} üzerinden yazdırıldı: ${serialResult.details}`,
+        method: serialResult.method,
+        details: serialResult.details,
+        attempts,
+      });
+    }
+
+    // 3. Network bağlantısını dene
+    console.log("\n🌐 3. NETWORK BAĞLANTISI DENENIYOR...");
+    const networkResult = await tryNetwork(imageData, textData);
+    attempts.push(networkResult);
+    if (networkResult.success) {
+      return NextResponse.json({
+        success: true,
+        message: `✅ ${networkResult.method} üzerinden yazdırıldı: ${networkResult.details}`,
+        method: networkResult.method,
+        details: networkResult.details,
+        attempts,
+      });
+    }
+
+    // Hiçbir yöntem çalışmadı
+    console.log("\n❌ HİÇBİR YÖNTEM ÇALIŞMADI");
+    console.log("Denemeler:", attempts);
+    console.log("\n💡 ÖNERİ:");
+    console.log("  - Windows: KPOS_80 yazıcısının yüklü olduğundan emin olun");
+    console.log("  - Linux: /dev/usb/lp0 veya CUPS yazıcısını kontrol edin");
+    console.log("  - Alternatif: Network IP adresini ayarlayın");
+
+    return NextResponse.json({
+      success: false,
+      error: "Yazıcı bulunamadı veya hiçbir bağlantı yöntemi çalışmadı",
+      attempts,
+    });
+  } catch (error: any) {
+    console.error("========================================");
+    console.error("❌ OTOMATİK YAZDIRMA HATASI");
+    console.error("Hata:", error.message);
+    console.error("========================================");
+
+    return NextResponse.json({
+      success: false,
+      error: error.message || "Bilinmeyen hata",
+    });
+  }
+}

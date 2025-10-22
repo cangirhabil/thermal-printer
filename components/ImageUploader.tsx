@@ -67,6 +67,8 @@ export default function ImageUploader({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+    // Parent component'e görsel kaldırıldığını bildir
+    onImageSelect("");
   };
 
   return (

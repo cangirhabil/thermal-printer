@@ -138,25 +138,67 @@ export async function POST(request: NextRequest) {
     // KP-301H için görsel işleme
     // Çözünürlük: 203 DPI (8 dots/mm)
     // Yazdırma genişliği: 72mm = 576 dots
-    // Optimal görsel: 576x[yükseklik] piksel, siyah-beyaz
+    // Floyd-Steinberg dithering ile optimum kalite
     console.log("Görsel işleniyor...");
-    const processedImage = await sharp(imageBuffer)
+    
+    // İlk işleme: resize ve grayscale
+    const resizedImage = await sharp(imageBuffer)
       .resize(576, null, {
         fit: "inside",
         withoutEnlargement: true,
-        kernel: sharp.kernel.lanczos3, // Daha yumuşak, kaliteli kenarlar
+        kernel: sharp.kernel.lanczos3,
       })
-      .grayscale() // Gri tonlama
-      .normalise() // Kontrast artırma ve normalleştirme
-      .threshold(128, { greyscale: false }) // Siyah-beyaz dönüşüm (termal yazıcı için önemli)
-      .png({
-        // PNG formatında kaydet
-        compressionLevel: 0, // Sıkıştırma yok (hız için)
-        palette: true, // Palet kullan
-      })
-      .toBuffer();
+      .grayscale()
+      .normalise()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
 
-    console.log("✓ Görsel işlendi, boyut:", processedImage.length, "bytes");
+    const { data: rawData, info } = resizedImage;
+    const width = info.width;
+    const height = info.height;
+    
+    console.log(`✓ Görsel yeniden boyutlandırıldı: ${width}x${height}`);
+
+    // Floyd-Steinberg Dithering
+    const dithered = new Uint8Array(width * height);
+    const errors = new Float32Array(width * height);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const idx = y * width + x;
+        let oldPixel = rawData[idx] + (errors[idx] || 0);
+        const newPixel = oldPixel < 128 ? 0 : 255;
+        dithered[idx] = newPixel;
+        const error = oldPixel - newPixel;
+
+        // Hatayı dağıt
+        if (x + 1 < width) errors[idx + 1] += (error * 7) / 16;
+        if (y + 1 < height) {
+          if (x > 0) errors[idx + width - 1] += (error * 3) / 16;
+          errors[idx + width] += (error * 5) / 16;
+          if (x + 1 < width) errors[idx + width + 1] += (error * 1) / 16;
+        }
+      }
+    }
+
+    console.log("✓ Floyd-Steinberg dithering uygulandı");
+
+    // Bitmap'e çevir (GS v 0 için)
+    const bytesPerLine = Math.ceil(width / 8);
+    const bitmapData = Buffer.alloc(bytesPerLine * height);
+
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        if (dithered[y * width + x] === 0) {
+          // Siyah piksel
+          const byteIndex = y * bytesPerLine + Math.floor(x / 8);
+          const bitIndex = 7 - (x % 8);
+          bitmapData[byteIndex] |= 1 << bitIndex;
+        }
+      }
+    }
+
+    console.log(`✓ Bitmap oluşturuldu: ${bitmapData.length} bytes`);
 
     // Yazdırma işlemi
     try {
@@ -166,18 +208,36 @@ export async function POST(request: NextRequest) {
       console.log("Yazıcı tipi:", printerConfig.type);
       console.log("Bağlantı interface:", printerConfig.interface);
       console.log("Bağlantı tipi:", settings.connectionType);
-      console.log("Görsel boyutu:", processedImage.length, "bytes");
+      console.log("Görsel boyutu:", width, "x", height);
+      console.log("Bitmap boyutu:", bitmapData.length, "bytes");
       console.log("----------------------------------------");
 
-      printer.alignCenter();
-      console.log("✓ Hizalama ayarlandı");
+      // ESC @ - Initialize
+      printer.raw(Buffer.from([0x1b, 0x40]));
+      console.log("✓ Yazıcı initialize edildi");
 
-      // printImageBuffer kullan (buffer'ı direkt kabul eder)
-      await printer.printImageBuffer(processedImage);
-      console.log("✓ Görsel buffer'a yazıldı");
+      // ESC a 1 - Center align
+      printer.raw(Buffer.from([0x1b, 0x61, 0x01]));
+      console.log("✓ Ortalama ayarlandı");
 
-      printer.cut();
-      console.log("✓ Kesme komutu eklendi");
+      // GS v 0 - Print raster bitmap
+      const xL = bytesPerLine & 0xff;
+      const xH = (bytesPerLine >> 8) & 0xff;
+      const yL = height & 0xff;
+      const yH = (height >> 8) & 0xff;
+
+      const imageCommand = Buffer.from([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
+      printer.raw(imageCommand);
+      printer.raw(bitmapData);
+      console.log("✓ Görsel komutu yazıldı");
+
+      // Kağıt ilerlet
+      printer.raw(Buffer.from([0x1b, 0x64, 0x03])); // ESC d 3 - 3 satır feed
+      console.log("✓ Kağıt ilerletme eklendi");
+
+      // GS V 66 - Full cut + feed (KP-301H için en iyi)
+      printer.raw(Buffer.from([0x1d, 0x56, 0x42, 0x00])); // GS V 66 0
+      console.log("✓ Kesme komutu eklendi (Full Cut)");
 
       console.log("Yazıcıya gönderiliyor...");
       await printer.execute();

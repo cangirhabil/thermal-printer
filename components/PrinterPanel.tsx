@@ -17,6 +17,11 @@ export default function PrinterPanel() {
     setTimeout(() => setMessage(null), 5000);
   };
 
+  const handleImageSelect = (data: string) => {
+    // Boş string gelirse null olarak kaydet
+    setImageData(data === "" ? null : data);
+  };
+
   const handlePrint = async () => {
     if (!imageData && !textData) {
       showMessage("error", "✗ Lütfen görsel veya metin girin!");
@@ -99,7 +104,10 @@ export default function PrinterPanel() {
       </div>
 
       {/* Görsel ve Metin Yükleme */}
-      <ImageUploader onImageSelect={setImageData} onTextChange={setTextData} />
+      <ImageUploader
+        onImageSelect={handleImageSelect}
+        onTextChange={setTextData}
+      />
 
       {/* Yazdır Butonu */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">

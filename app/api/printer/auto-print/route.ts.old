@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
 import * as net from "net";
-import * as fs from "fs";
-import * as path from "path";
-import * as os from "os";
 import sharp from "sharp";
 
-const execAsync = promisify(exec);
+// ESCPOS kütüphanesi - Standart ve güvenilir
+let EscPos: any = null;
+let SerialPort: any = null;
+
+async function loadEscPos() {
+  if (!EscPos) {
+    const escposModule = await import("escpos");
+    EscPos = escposModule.default;
+    // @ts-ignore
+    EscPos.USB = await import("escpos-usb");
+    // @ts-ignore  
+    EscPos.Serial = await import("escpos-serialport");
+  }
+  return EscPos;
+}
+
+async function loadSerialPort() {
+  if (!SerialPort) {
+    const serialModule = await import("serialport");
+    SerialPort = serialModule.SerialPort;
+  }
+  return SerialPort;
+}
 
 interface PrintAttempt {
   method: string;
@@ -35,26 +52,26 @@ async function trySerialPorts(
       console.log(`🔌 Port deneniyor: ${portPath}`);
 
       try {
-        // Görsel işleme - KP-302 için optimize edilmiş
+        // Görsel işleme - KP-301H için optimize edilmiş
         let bitmapBuffer: Buffer | null = null;
         if (imageData) {
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // KP-302: 576 dots genişlik (72mm x 8 dots/mm)
-          // Sharp ile işleme - termal yazıcı için optimize
+          // KP-301H: 576 dots genişlik (72mm x 8 dots/mm), 203 DPI
+          // Floyd-Steinberg dithering ile çok daha iyi sonuç
           const processedImage = await sharp(imageBuffer)
             .resize(576, null, {
               fit: "inside",
               withoutEnlargement: false,
-              kernel: sharp.kernel.lanczos3, // Daha yumuşak kenarlar
+              kernel: sharp.kernel.lanczos3, // Daha kaliteli resize
             })
             .grayscale()
-            .normalise() // Kontrast normalleştirme
-            .threshold(128, { greyscale: false }) // Binary threshold (siyah-beyaz)
+            .normalise() // Kontrast artır
+            .png() // PNG olarak kaydet (dithering için)
             .toBuffer();
 
-          // Sharp'ın PNG çıktısını yeniden okuyup raw'a çevir
+          // Raw formata çevir - Floyd-Steinberg dithering ile
           const rawImage = await sharp(processedImage)
             .raw()
             .toBuffer({ resolveWithObject: true });
@@ -67,18 +84,32 @@ async function trySerialPorts(
           bitmapBuffer = Buffer.alloc(bytesPerLine * height);
           bitmapBuffer.fill(0); // Temiz başlangıç
 
-          // Piksel dönüşümü - her pikseli kontrol et
-          // ESC/POS standardı: MSB first (soldan sağa, 7->0 bit sırası)
+          // Floyd-Steinberg Dithering algoritması
+          // Termal yazıcılar için kritik - detayları korur
+          const errorBuffer = new Float32Array(width * height);
+
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-              const idx = (y * info.width + x) * info.channels;
-              const pixelValue = rawData[idx];
+              const idx = y * info.width + x;
+              let pixelValue =
+                rawData[idx * info.channels] + (errorBuffer[idx] || 0);
 
-              // Sharp threshold: Siyah=0, Beyaz=255
-              // Thermal printer: Bit 1=Siyah, Bit 0=Beyaz
-              if (pixelValue < 128) {
+              // Threshold ile siyah/beyaz karar
+              const newPixel = pixelValue < 128 ? 0 : 255;
+              const error = pixelValue - newPixel;
+
+              // Hatayı komşu piksellere dağıt (Floyd-Steinberg)
+              if (x + 1 < width) errorBuffer[y * width + x + 1] += error * (7 / 16);
+              if (y + 1 < height) {
+                if (x > 0) errorBuffer[(y + 1) * width + x - 1] += error * (3 / 16);
+                errorBuffer[(y + 1) * width + x] += error * (5 / 16);
+                if (x + 1 < width) errorBuffer[(y + 1) * width + x + 1] += error * (1 / 16);
+              }
+
+              // Siyah piksel ise bit set et
+              if (newPixel === 0) {
                 const byteIndex = y * bytesPerLine + Math.floor(x / 8);
-                const bitIndex = 7 - (x % 8); // MSB first
+                const bitIndex = 7 - (x % 8);
                 bitmapBuffer[byteIndex] |= 1 << bitIndex;
               }
             }
@@ -111,21 +142,19 @@ async function trySerialPorts(
         }
 
         const escInit = "1B 40"; // ESC @
-        const cutPaper = "1D 56 00"; // GS V 0
+        const feedPaper = "1B 64 03"; // ESC d 3 - 3 satır feed
+        const cutPaper = "1D 56 42 00"; // GS V 66 0 - Full cut with feed (KP-301H)
 
         let imageCommands = "";
         if (bitmapBuffer && imageWidth > 0 && imageHeight > 0) {
-          // Byte cinsinden genişlik hesabı
-          const widthBytes = Math.ceil(imageWidth / 8);
-          const xL = widthBytes & 0xff;
-          const xH = (widthBytes >> 8) & 0xff;
+          const xL = imageWidth & 0xff;
+          const xH = (imageWidth >> 8) & 0xff;
           const yL = imageHeight & 0xff;
           const yH = (imageHeight >> 8) & 0xff;
 
           imageCommands = `
-  # Görsel yazdır - GS v 0 m komutu (ESC/POS standart)
-  # m=0: Normal mode, xL xH = genişlik (byte), yL yH = yükseklik (dot)
-  Write-Host "Gorsel yazdiriliyor: ${imageWidth}x${imageHeight} (${widthBytes} bytes/satir)"
+  # Görsel yazdır - GS v 0 komutu
+  Write-Host "Gorsel yazdiriliyor: ${imageWidth}x${imageHeight}"
   $imageCommand = [byte[]](0x1D, 0x76, 0x30, 0x00, ${xL}, ${xH}, ${yL}, ${yH})
   $port.Write($imageCommand, 0, $imageCommand.Length)
   Start-Sleep -Milliseconds 100
@@ -134,7 +163,7 @@ async function trySerialPorts(
     /\\/g,
     "\\\\"
   )}")
-  Write-Host "Bitmap data boyutu:" $bitmapData.Length "bytes (beklenen:" ($imageCommand[4] + $imageCommand[5]*256) * ($imageCommand[6] + $imageCommand[7]*256) ")"
+  Write-Host "Bitmap data boyutu:" $bitmapData.Length
   $port.Write($bitmapData, 0, $bitmapData.Length)
   Start-Sleep -Milliseconds 200
 `;
@@ -195,22 +224,25 @@ try {
     Start-Sleep -Milliseconds 50
     ${imageCommands}${textCommands}
     # Kağıt ilerletme (fişi koparılabilir hale getir)
-    $feedBytes = [byte[]](0x1B, 0x64, 0x05)  # ESC d 5 - 5 satır boşluk
+    $feedBytes = [byte[]](${feedPaper
+      .split(" ")
+      .map((b) => `0x${b}`)
+      .join(", ")})
     $port.Write($feedBytes, 0, $feedBytes.Length)
     Start-Sleep -Milliseconds 200
     
-    # Cut paper (full cut)
+    # Cut paper (full cut with feed - KP-301H)
     $cutBytes = [byte[]](${cutPaper
       .split(" ")
       .map((b) => `0x${b}`)
       .join(", ")})
     $port.Write($cutBytes, 0, $cutBytes.Length)
-    Start-Sleep -Milliseconds 300
+    Start-Sleep -Milliseconds 500
     
-    # Ekstra feed (kesme sonrası)
-    $finalFeedBytes = [byte[]](0x1B, 0x64, 0x03)  # ESC d 3 - 3 satır boşluk
-    $port.Write($finalFeedBytes, 0, $finalFeedBytes.Length)
-    Start-Sleep -Milliseconds 200
+    # Ekstra feed (kesme sonrası - emin olmak için)
+    $extraFeedBytes = [byte[]](0x1B, 0x64, 0x05)  # ESC d 5 - 5 satır boşluk
+    $port.Write($extraFeedBytes, 0, $extraFeedBytes.Length)
+    Start-Sleep -Milliseconds 300
     
     $port.Close()
     Write-Output "SUCCESS"
@@ -300,19 +332,19 @@ async function tryNetwork(
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // KP-302 için optimize edilmiş görsel işleme
+          // KP-301H için optimize edilmiş görsel işleme
           const processedImage = await sharp(imageBuffer)
             .resize(576, null, {
               fit: "inside",
               withoutEnlargement: false,
-              kernel: sharp.kernel.lanczos3, // Daha yumuşak kenarlar
+              kernel: sharp.kernel.lanczos3, // Daha kaliteli resize
             })
             .grayscale()
-            .normalise() // Kontrast normalleştirme
-            .threshold(128, { greyscale: false }) // Binary threshold
+            .normalise() // Kontrast artır
+            .png()
             .toBuffer();
 
-          // Sharp'ın PNG çıktısını yeniden okuyup raw'a çevir
+          // Raw formata çevir - Floyd-Steinberg dithering ile
           const rawImage = await sharp(processedImage)
             .raw()
             .toBuffer({ resolveWithObject: true });
@@ -325,30 +357,41 @@ async function tryNetwork(
           const bitmapBuffer = Buffer.alloc(bytesPerLine * height);
           bitmapBuffer.fill(0);
 
+          // Floyd-Steinberg Dithering - termal yazıcı için en iyi
+          const errorBuffer = new Float32Array(width * height);
+
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
-              const idx = (y * info.width + x) * info.channels;
-              const pixelValue = rawData[idx];
+              const idx = y * info.width + x;
+              let pixelValue =
+                rawData[idx * info.channels] + (errorBuffer[idx] || 0);
 
-              // Sharp threshold: Siyah=0, Beyaz=255
-              // Thermal printer: Bit 1=Siyah, Bit 0=Beyaz
-              if (pixelValue < 128) {
+              const newPixel = pixelValue < 128 ? 0 : 255;
+              const error = pixelValue - newPixel;
+
+              // Hatayı komşu piksellere dağıt
+              if (x + 1 < width) errorBuffer[y * width + x + 1] += error * (7 / 16);
+              if (y + 1 < height) {
+                if (x > 0) errorBuffer[(y + 1) * width + x - 1] += error * (3 / 16);
+                errorBuffer[(y + 1) * width + x] += error * (5 / 16);
+                if (x + 1 < width) errorBuffer[(y + 1) * width + x + 1] += error * (1 / 16);
+              }
+
+              if (newPixel === 0) {
                 const byteIndex = y * bytesPerLine + Math.floor(x / 8);
-                const bitIndex = 7 - (x % 8); // MSB first
+                const bitIndex = 7 - (x % 8);
                 bitmapBuffer[byteIndex] |= 1 << bitIndex;
               }
             }
           }
 
-          // Byte cinsinden genişlik hesabı
-          const widthBytes = Math.ceil(width / 8);
-          const xL = widthBytes & 0xff;
-          const xH = (widthBytes >> 8) & 0xff;
+          const xL = width & 0xff;
+          const xH = (width >> 8) & 0xff;
           const yL = height & 0xff;
           const yH = (height >> 8) & 0xff;
 
           console.log(
-            `📐 Network bitmap: ${width}x${height}, ${widthBytes} bytes/satir, Data: ${bitmapBuffer.length} bytes`
+            `📐 Network bitmap: ${width}x${height}, Data: ${bitmapBuffer.length} bytes`
           );
 
           const imageCommand = new Uint8Array([
@@ -383,16 +426,17 @@ async function tryNetwork(
           socket.write(normalSize);
         }
 
-        // Kağıt ilerletme
-        const feedPaper = new Uint8Array([0x1b, 0x64, 0x05]); // ESC d 5
+        // Kağıt ilerlet
+        const feedPaper = new Uint8Array([0x1b, 0x64, 0x03]); // ESC d 3
         socket.write(feedPaper);
 
-        const cutPaper = new Uint8Array([0x1d, 0x56, 0x00]); // GS V 0
+        // GS V 66 0 - Full cut with feed (KP-301H için)
+        const cutPaper = new Uint8Array([0x1d, 0x56, 0x42, 0x00]); // GS V 66 0
         socket.write(cutPaper);
 
-        // Ekstra feed
-        const finalFeed = new Uint8Array([0x1b, 0x64, 0x03]); // ESC d 3
-        socket.write(finalFeed);
+        // Ekstra feed (kesme sonrası)
+        const extraFeed = new Uint8Array([0x1b, 0x64, 0x05]); // ESC d 5
+        socket.write(extraFeed);
 
         socket.end();
 
@@ -425,7 +469,7 @@ export async function POST(request: NextRequest) {
     const { imageData, textData } = await request.json();
 
     console.log("========================================");
-    console.log("🤖 OTOMATİK YAZDIRMA - KP-302 Yazıcı");
+    console.log("🤖 OTOMATİK YAZDIRMA - KP-301H Yazıcı");
     console.log("Görsel:", !!imageData);
     console.log("Metin:", !!textData);
     console.log("Öncelik: 1) COM Port  2) Ethernet");
@@ -438,7 +482,7 @@ export async function POST(request: NextRequest) {
     // KP-302 için öncelikli bağlantı yöntemi
     // ==========================================
     console.log("\n🔌 ÖNCELİK 1: COM PORT BAĞLANTISI");
-    console.log("📋 KP-302: Serial/COM interface (öncelikli)");
+    console.log("📋 KP-301H: Serial/COM interface (öncelikli)");
     console.log("========================================");
 
     const serialResult = await trySerialPorts(imageData, textData);
@@ -465,7 +509,7 @@ export async function POST(request: NextRequest) {
     // COM port müsait değilse alternatif bağlantı
     // ==========================================
     console.log("\n🌐 ÖNCELİK 2: ETHERNET BAĞLANTISI");
-    console.log("📋 KP-302: Network interface (alternatif)");
+    console.log("📋 KP-301H: Network interface (alternatif)");
     console.log("========================================");
 
     const networkResult = await tryNetwork(imageData, textData);
@@ -504,7 +548,7 @@ export async function POST(request: NextRequest) {
     console.log("💡 SORUN GİDERME:");
     console.log("========================================");
     console.log("📌 COM Port Bağlantısı için:");
-    console.log("   ✓ KP-302'nin USB kablosunun takılı olduğunu kontrol edin");
+    console.log("   ✓ KP-301H'nin USB kablosunun takılı olduğunu kontrol edin");
     console.log(
       "   ✓ Cihaz Yöneticisi'nde COM portunu bulun (örn: COM3, COM4)"
     );

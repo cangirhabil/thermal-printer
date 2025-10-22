@@ -231,7 +231,7 @@ export default function PrinterSettingsPanel({
             <Label className="text-sm mb-2 block">IP Adresi</Label>
             <Input
               type="text"
-              placeholder="192.168.1.100"
+              placeholder="192.168.2.211"
               value={networkIP}
               onChange={(e) => setNetworkIP(e.target.value)}
               className="h-12"

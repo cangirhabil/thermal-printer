@@ -37,7 +37,7 @@ async function detectSerialPorts(): Promise<DetectionResult[]> {
           vendorId: port.vendorId,
           productId: port.productId,
         },
-        priority: isUSB ? 1 : 2, // USB öncelikli
+        priority: isUSB ? 2 : 3, // USB ikinci öncelik
         available: true,
       });
     }
@@ -52,12 +52,10 @@ async function detectSerialPorts(): Promise<DetectionResult[]> {
 // Network bağlantısını test et
 async function detectNetwork(): Promise<DetectionResult | null> {
   const commonIPs = [
-    "192.168.2.211", // Mevcut IP
-    "192.168.1.100",
-    "192.168.0.100",
+    "192.168.2.211", // Ana yazıcı IP (LAN)
   ];
 
-  const commonPorts = [9100, 9101, 9102];
+  const commonPorts = [9100]; // Port 9100
 
   for (const ip of commonIPs) {
     for (const port of commonPorts) {
@@ -67,7 +65,7 @@ async function detectNetwork(): Promise<DetectionResult | null> {
           return {
             method: "network",
             details: { ip, port },
-            priority: 3, // Network düşük öncelik
+            priority: 1, // Network EN YÜKSEK öncelik
             available: true,
             testResult: "Bağlantı başarılı",
           };
@@ -211,10 +209,31 @@ async function testPrinter(
 export async function GET(request: NextRequest) {
   try {
     console.log("🔍 Otomatik yazıcı algılama başlatılıyor...");
-    console.log("📋 Öncelik: 1) COM/Serial 2) USB 3) Network 4) Windows");
+    console.log("📋 Öncelik: 1) Network (LAN) 2) USB 3) Serial 4) Windows");
 
-    // ÖNCELİK 1: Serial/COM portları kontrol et (ÖNCE)
-    console.log("\n🔌 Öncelik 1: COM/Serial portlar kontrol ediliyor...");
+    // ÖNCELİK 1: Network kontrol et (İLK ÖNCE!)
+    console.log("\n🌐 Öncelik 1: Network (192.168.2.211:9100) kontrol ediliyor...");
+    const networkResult = await detectNetwork();
+
+    if (networkResult && networkResult.available) {
+      console.log(`✅ Network bağlantı bulundu: ${networkResult.details.ip}:${networkResult.details.port}`);
+      return NextResponse.json({
+        success: true,
+        method: "network",
+        bestMethod: {
+          connectionType: "network",
+          details: networkResult.details,
+          testResult: networkResult.testResult,
+        },
+        allResults: networkResult ? [networkResult] : [],
+        message: `Network bağlantı başarılı: ${networkResult.details.ip}:${networkResult.details.port}`,
+      });
+    }
+
+    console.log("❌ Network bağlantı bulunamadı, COM/Serial portlar deneniyor...");
+
+    // ÖNCELİK 2: Serial/COM portları kontrol et (Network yoksa)
+    console.log("\n🔌 Öncelik 2: COM/Serial portlar kontrol ediliyor...");
     const serialResults = await detectSerialPorts();
 
     // Serial portları test et
@@ -251,29 +270,8 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log("❌ COM/Serial port bulunamadı, diğer yöntemler deneniyor...");
-
-    // ÖNCELİK 2: Network kontrol et (COM yoksa)
-    console.log("\n🌐 Öncelik 2: Network kontrol ediliyor...");
-    const networkResult = await detectNetwork();
-
-    if (networkResult && networkResult.available) {
-      console.log(`✅ Network bağlantı bulundu: ${networkResult.details.ip}`);
-      return NextResponse.json({
-        success: true,
-        method: "network",
-        bestMethod: {
-          connectionType: "network",
-          details: networkResult.details,
-          testResult: networkResult.testResult,
-        },
-        allResults: networkResult ? [networkResult] : [],
-        message: `Network bağlantı başarılı: ${networkResult.details.ip}:${networkResult.details.port}`,
-      });
-    }
-
     console.log(
-      "❌ Network bağlantı bulunamadı, Windows yazıcılar kontrol ediliyor..."
+      "❌ COM/Serial port bulunamadı, Windows yazıcılar kontrol ediliyor..."
     );
 
     // ÖNCELİK 3: Windows yazıcıları kontrol et (en son)

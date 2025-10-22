@@ -211,31 +211,16 @@ async function testPrinter(
 export async function GET(request: NextRequest) {
   try {
     console.log("🔍 Otomatik yazıcı algılama başlatılıyor...");
+    console.log("📋 Öncelik: 1) COM/Serial 2) USB 3) Network 4) Windows");
 
-    // Tüm yöntemleri paralel olarak kontrol et
-    const [serialResults, networkResult, windowsResults] = await Promise.all([
-      detectSerialPorts(),
-      detectNetwork(),
-      detectWindowsPrinters(),
-    ]);
-
-    // Tüm sonuçları birleştir
-    let allResults: DetectionResult[] = [
-      ...serialResults,
-      ...(networkResult ? [networkResult] : []),
-      ...windowsResults,
-    ];
-
-    console.log(`📋 ${allResults.length} yazıcı bağlantısı bulundu`);
-
-    // Her yöntemi test et
-    const testedResults = await Promise.all(
-      allResults.map(async (result) => {
-        console.log(
-          `🧪 Test ediliyor: ${result.method} - ${JSON.stringify(
-            result.details
-          )}`
-        );
+    // ÖNCELİK 1: Serial/COM portları kontrol et (ÖNCE)
+    console.log("\n🔌 Öncelik 1: COM/Serial portlar kontrol ediliyor...");
+    const serialResults = await detectSerialPorts();
+    
+    // Serial portları test et
+    const testedSerialResults = await Promise.all(
+      serialResults.map(async (result) => {
+        console.log(`🧪 Test ediliyor: ${result.method} - ${JSON.stringify(result.details)}`);
         const testResult = await testPrinter(result.method, result.details);
         return {
           ...result,
@@ -245,8 +230,89 @@ export async function GET(request: NextRequest) {
       })
     );
 
+    // Başarılı serial port varsa hemen dön
+    const workingSerial = testedSerialResults.find((r) => r.available);
+    if (workingSerial) {
+      console.log(`✅ COM/Serial bağlantı bulundu: ${workingSerial.method}`);
+      return NextResponse.json({
+        success: true,
+        method: workingSerial.method,
+        bestMethod: {
+          connectionType: workingSerial.method,
+          details: workingSerial.details,
+          testResult: workingSerial.testResult,
+        },
+        allResults: testedSerialResults,
+        message: `Bağlantı başarılı: ${workingSerial.method} - ${workingSerial.testResult}`,
+      });
+    }
+
+    console.log("❌ COM/Serial port bulunamadı, diğer yöntemler deneniyor...");
+
+    // ÖNCELİK 2: Network kontrol et (COM yoksa)
+    console.log("\n🌐 Öncelik 2: Network kontrol ediliyor...");
+    const networkResult = await detectNetwork();
+    
+    if (networkResult && networkResult.available) {
+      console.log(`✅ Network bağlantı bulundu: ${networkResult.details.ip}`);
+      return NextResponse.json({
+        success: true,
+        method: "network",
+        bestMethod: {
+          connectionType: "network",
+          details: networkResult.details,
+          testResult: networkResult.testResult,
+        },
+        allResults: networkResult ? [networkResult] : [],
+        message: `Network bağlantı başarılı: ${networkResult.details.ip}:${networkResult.details.port}`,
+      });
+    }
+
+    console.log("❌ Network bağlantı bulunamadı, Windows yazıcılar kontrol ediliyor...");
+
+    // ÖNCELİK 3: Windows yazıcıları kontrol et (en son)
+    console.log("\n🖨️ Öncelik 3: Windows yazıcılar kontrol ediliyor...");
+    const windowsResults = await detectWindowsPrinters();
+    
+    const testedWindowsResults = await Promise.all(
+      windowsResults.map(async (result) => {
+        console.log(`🧪 Test ediliyor: ${result.method} - ${JSON.stringify(result.details)}`);
+        const testResult = await testPrinter(result.method, result.details);
+        return {
+          ...result,
+          testResult: testResult.message,
+          available: testResult.success,
+        };
+      })
+    );
+
+    const workingWindows = testedWindowsResults.find((r) => r.available);
+    if (workingWindows) {
+      console.log(`✅ Windows yazıcı bulundu: ${workingWindows.details.name}`);
+      return NextResponse.json({
+        success: true,
+        method: "windows",
+        bestMethod: {
+          connectionType: "windows",
+          details: workingWindows.details,
+          testResult: workingWindows.testResult,
+        },
+        allResults: testedWindowsResults,
+        message: `Windows yazıcı bağlantı başarılı: ${workingWindows.details.name}`,
+      });
+    }
+
+    // Tüm sonuçları birleştir (başarısız durumlar için)
+    let allResults: DetectionResult[] = [
+      ...testedSerialResults,
+      ...(networkResult ? [networkResult] : []),
+      ...testedWindowsResults,
+    ];
+
+    console.log(`📋 ${allResults.length} toplam bağlantı denendi, hiçbiri çalışmadı`);
+
     // Başarılı olanları filtrele ve önceliğe göre sırala
-    const workingResults = testedResults
+    const workingResults = allResults
       .filter((r) => r.available)
       .sort((a, b) => a.priority - b.priority);
 
@@ -254,7 +320,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: false,
         error: "Hiçbir çalışan yazıcı bağlantısı bulunamadı",
-        allResults: testedResults,
+        allResults: allResults,
       });
     }
 
@@ -265,12 +331,13 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
+      method: bestMethod.method,
       bestMethod: {
         connectionType: bestMethod.method,
         details: bestMethod.details,
         testResult: bestMethod.testResult,
       },
-      allResults: testedResults,
+      allResults: allResults,
       message: `En iyi bağlantı: ${bestMethod.method} - ${bestMethod.testResult}`,
     });
   } catch (error: any) {

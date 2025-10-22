@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -15,21 +15,23 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Settings, 
-  Wifi, 
-  UsbIcon, 
+import {
+  Settings,
+  Wifi,
+  UsbIcon,
   Monitor,
   RefreshCw,
   CheckCircle2,
-  Info
+  Info,
 } from "lucide-react";
 
 interface PrinterSettingsPanelProps {
   onSettingsChange?: () => void;
 }
 
-export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettingsPanelProps) {
+export default function PrinterSettingsPanel({
+  onSettingsChange,
+}: PrinterSettingsPanelProps) {
   const [connectionType, setConnectionType] = useState("auto");
   const [availablePorts, setAvailablePorts] = useState<string[]>([]);
   const [selectedPort, setSelectedPort] = useState("");
@@ -49,7 +51,7 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
     try {
       const response = await fetch("/api/printer/ports");
       const data = await response.json();
-      
+
       if (data.success && data.ports) {
         setAvailablePorts(data.ports.map((p: any) => p.path));
         toast({
@@ -77,7 +79,7 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
     try {
       const response = await fetch("/api/printer/auto-detect");
       const data = await response.json();
-      
+
       if (data.success) {
         toast({
           title: "Bağlantı Başarılı",
@@ -153,14 +155,23 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
                   Otomatik Algılama Aktif
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Sistem, yazıcıyı otomatik olarak USB, Serial, Network ve Windows yazıcıları 
-                  arasında arayacak ve ilk bulunanı kullanacaktır. Çoğu kullanım için önerilir.
+                  Sistem, yazıcıyı otomatik olarak USB, Serial, Network ve
+                  Windows yazıcıları arasında arayacak ve ilk bulunanı
+                  kullanacaktır. Çoğu kullanım için önerilir.
                 </p>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  <Badge variant="secondary" className="text-xs">USB</Badge>
-                  <Badge variant="secondary" className="text-xs">Serial</Badge>
-                  <Badge variant="secondary" className="text-xs">Network</Badge>
-                  <Badge variant="secondary" className="text-xs">Windows</Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    USB
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Serial
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Network
+                  </Badge>
+                  <Badge variant="secondary" className="text-xs">
+                    Windows
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -173,13 +184,15 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <Label className="text-base">Mevcut Portlar</Label>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={fetchPorts}
               disabled={loading}
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 mr-2 ${loading ? "animate-spin" : ""}`}
+              />
               Yenile
             </Button>
           </div>
@@ -190,7 +203,9 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
             </SelectTrigger>
             <SelectContent>
               {availablePorts.length === 0 ? (
-                <SelectItem value="none" disabled>Port bulunamadı</SelectItem>
+                <SelectItem value="none" disabled>
+                  Port bulunamadı
+                </SelectItem>
               ) : (
                 availablePorts.map((port) => (
                   <SelectItem key={port} value={port}>
@@ -237,8 +252,8 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
           <Card className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
             <CardContent className="p-3">
               <p className="text-xs text-amber-700 dark:text-amber-300">
-                💡 Çoğu termal yazıcı 9100 portunu kullanır. Yazıcınızın ağ ayarlarından 
-                IP adresini ve portunu kontrol edin.
+                💡 Çoğu termal yazıcı 9100 portunu kullanır. Yazıcınızın ağ
+                ayarlarından IP adresini ve portunu kontrol edin.
               </p>
             </CardContent>
           </Card>
@@ -290,7 +305,9 @@ export default function PrinterSettingsPanel({ onSettingsChange }: PrinterSettin
           <ul className="text-xs text-muted-foreground space-y-2 ml-4 list-disc">
             <li>Otomatik mod çoğu durumda yazıcıyı bulacaktır</li>
             <li>USB bağlantı için sürücülerin yüklü olduğundan emin olun</li>
-            <li>Network bağlantı için yazıcı ve bilgisayar aynı ağda olmalıdır</li>
+            <li>
+              Network bağlantı için yazıcı ve bilgisayar aynı ağda olmalıdır
+            </li>
             <li>Sorun yaşıyorsanız yazıcıyı yeniden başlatın</li>
           </ul>
         </CardContent>

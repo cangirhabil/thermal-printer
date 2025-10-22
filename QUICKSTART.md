@@ -13,6 +13,7 @@ Tarayıcınızda açın: **http://localhost:3000**
 ### 2️⃣ Yazıcı Kontrolü
 
 Sayfa açıldığında:
+
 - ✅ Sağ üstte **"Aktif"** badge'i görünüyorsa → Hazırsınız!
 - ❌ **"Bağlantı Yok"** gösteriyorsa → Yazıcınızı kontrol edin
 
@@ -37,16 +38,19 @@ Sayfa açıldığında:
 ## 📱 Cihazlarda Kullanım
 
 ### 💻 Masaüstü
+
 - Tam özellikli 3 sütun layout
 - Tüm özellikler aktif
 - Hover efektleri
 
 ### 📱 Tablet
+
 - 2 sütun layout
 - Optimize edilmiş görünüm
 - Touch-friendly
 
 ### 📱 Mobil
+
 - Tek sütun
 - Stack layout
 - Büyük dokunma alanları
@@ -56,7 +60,9 @@ Sayfa açıldığında:
 ## 🎯 Temel Özellikler
 
 ### ✨ Otomatik Algılama
+
 Hiçbir ayar yapmanıza gerek yok! Sistem otomatik olarak:
+
 - USB yazıcıları
 - Serial portları (COM)
 - Network yazıcıları
@@ -65,12 +71,14 @@ Hiçbir ayar yapmanıza gerek yok! Sistem otomatik olarak:
 tarar ve en uygununu seçer.
 
 ### 🖼️ Görsel Yazdırma
+
 - **Desteklenen formatlar:** PNG, JPG, GIF
 - **Sürükle & Bırak** desteği
 - **Otomatik önizleme**
 - **Boyut optimizasyonu:** 576px genişlik
 
 ### 📝 Metin Yazdırma
+
 - **Çoklu satır** desteği
 - **4 yazı boyutu:** Küçük, Normal, Büyük, Çok Büyük
 - **3 hizalama:** Sol, Orta, Sağ
@@ -78,7 +86,9 @@ tarar ve en uygununu seçer.
 - **Canlı önizleme**
 
 ### ⚙️ Manuel Ayarlar
+
 İhtiyaç duyarsanız:
+
 1. **"Ayarlar"** sekmesine gidin
 2. Bağlantı tipini seçin
 3. Gerekli bilgileri girin
@@ -89,6 +99,7 @@ tarar ve en uygununu seçer.
 ## 🆘 Sorun mu Yaşıyorsunuz?
 
 ### Yazıcı Algılanmıyor
+
 ```
 1. USB kablosunu kontrol edin
 2. Yazıcının açık olduğundan emin olun
@@ -97,6 +108,7 @@ tarar ve en uygununu seçer.
 ```
 
 ### Bozuk Çıktı
+
 ```
 1. Görseli 576px genişliğe düşürün
 2. Kağıt genişliğini kontrol edin (80mm)
@@ -104,6 +116,7 @@ tarar ve en uygununu seçer.
 ```
 
 ### Network Bağlanamıyor
+
 ```
 1. Yazıcı ve PC aynı ağda mı?
 2. IP adresi doğru mu?
@@ -116,16 +129,19 @@ tarar ve en uygununu seçer.
 ## 🎨 UI Özellikleri
 
 ### 🌗 Dark Mode
+
 - Otomatik sistem tercihi
 - Göz dostu renkler
 - Tüm komponentler uyumlu
 
 ### 📱 Responsive
+
 - Her ekran boyutunda mükemmel
 - Mobil-first tasarım
 - Touch-optimized
 
 ### 🔔 Bildirimler
+
 - Başarı/hata mesajları
 - Otomatik kapanma (5 saniye)
 - Stack notification desteği
@@ -146,12 +162,14 @@ Ctrl/Cmd + V → Görsel yapıştırma (yakında)
 ## 📊 Sistem Gereksinimleri
 
 ### Minimum
+
 - **Node.js:** 18.x veya üzeri
 - **RAM:** 512MB
 - **Disk:** 500MB
 - **Tarayıcı:** Modern browser (Chrome, Firefox, Safari, Edge)
 
 ### Önerilen
+
 - **Node.js:** 20.x
 - **RAM:** 2GB
 - **Disk:** 1GB
@@ -162,6 +180,7 @@ Ctrl/Cmd + V → Görsel yapıştırma (yakında)
 ## 🔧 Gelişmiş Özellikler
 
 ### API Endpoints
+
 ```javascript
 // Otomatik yazdırma
 POST /api/printer/auto-print
@@ -183,6 +202,7 @@ GET /api/printer/ports
 ```
 
 ### Özelleştirme
+
 - `tailwind.config.ts` → Renkler, spacing
 - `components/ui/` → Shadcn komponentleri
 - `app/globals.css` → Global stiller
@@ -210,16 +230,19 @@ GET /api/printer/ports
 ## 💡 Pro İpuçları
 
 ### Görsel Yazdırma
+
 - Yüksek kontrast → Daha net çıktı
 - Siyah-beyaz → En iyi sonuç
 - 576px genişlik → Optimum boyut
 
 ### Metin Yazdırma
+
 - Kısa satırlar → Daha okunabilir
 - Kalın yazı → Vurgular için
 - Ortala hizalama → Başlıklar için
 
 ### Performans
+
 - Görsel önbelleği temizleyin
 - Tarayıcı cache'ini yönetin
 - Düzenli olarak yazıcıyı yeniden başlatın
@@ -239,6 +262,7 @@ GET /api/printer/ports
 ## 🎯 Başarı Metrikleri
 
 Uygulamanız başarılıysa:
+
 - ✅ Yazıcı otomatik algılanıyor
 - ✅ Yazdırma 5 saniyeden kısa sürüyor
 - ✅ %95+ başarı oranı

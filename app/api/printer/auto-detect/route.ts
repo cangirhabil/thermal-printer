@@ -216,11 +216,15 @@ export async function GET(request: NextRequest) {
     // ÖNCELİK 1: Serial/COM portları kontrol et (ÖNCE)
     console.log("\n🔌 Öncelik 1: COM/Serial portlar kontrol ediliyor...");
     const serialResults = await detectSerialPorts();
-    
+
     // Serial portları test et
     const testedSerialResults = await Promise.all(
       serialResults.map(async (result) => {
-        console.log(`🧪 Test ediliyor: ${result.method} - ${JSON.stringify(result.details)}`);
+        console.log(
+          `🧪 Test ediliyor: ${result.method} - ${JSON.stringify(
+            result.details
+          )}`
+        );
         const testResult = await testPrinter(result.method, result.details);
         return {
           ...result,
@@ -252,7 +256,7 @@ export async function GET(request: NextRequest) {
     // ÖNCELİK 2: Network kontrol et (COM yoksa)
     console.log("\n🌐 Öncelik 2: Network kontrol ediliyor...");
     const networkResult = await detectNetwork();
-    
+
     if (networkResult && networkResult.available) {
       console.log(`✅ Network bağlantı bulundu: ${networkResult.details.ip}`);
       return NextResponse.json({
@@ -268,15 +272,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log("❌ Network bağlantı bulunamadı, Windows yazıcılar kontrol ediliyor...");
+    console.log(
+      "❌ Network bağlantı bulunamadı, Windows yazıcılar kontrol ediliyor..."
+    );
 
     // ÖNCELİK 3: Windows yazıcıları kontrol et (en son)
     console.log("\n🖨️ Öncelik 3: Windows yazıcılar kontrol ediliyor...");
     const windowsResults = await detectWindowsPrinters();
-    
+
     const testedWindowsResults = await Promise.all(
       windowsResults.map(async (result) => {
-        console.log(`🧪 Test ediliyor: ${result.method} - ${JSON.stringify(result.details)}`);
+        console.log(
+          `🧪 Test ediliyor: ${result.method} - ${JSON.stringify(
+            result.details
+          )}`
+        );
         const testResult = await testPrinter(result.method, result.details);
         return {
           ...result,
@@ -309,7 +319,9 @@ export async function GET(request: NextRequest) {
       ...testedWindowsResults,
     ];
 
-    console.log(`📋 ${allResults.length} toplam bağlantı denendi, hiçbiri çalışmadı`);
+    console.log(
+      `📋 ${allResults.length} toplam bağlantı denendi, hiçbiri çalışmadı`
+    );
 
     // Başarılı olanları filtrele ve önceliğe göre sırala
     const workingResults = allResults

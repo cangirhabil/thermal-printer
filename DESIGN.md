@@ -3,6 +3,7 @@
 ## 📱 Responsive Tasarım
 
 ### Mobil (< 640px)
+
 - Tek sütun layout
 - Dokunmatik optimizasyonu
 - Geniş touch target'lar (min 44px)
@@ -10,12 +11,14 @@
 - Stack layout
 
 ### Tablet (640px - 1024px)
+
 - 2 sütun grid
 - Adapte edilmiş spacing
 - Optimize edilmiş font boyutları
 - Gesture desteği
 
 ### Desktop (> 1024px)
+
 - 3 sütun layout (1 sol panel + 2 ana içerik)
 - Hover efektleri
 - Keyboard shortcuts desteği
@@ -24,6 +27,7 @@
 ## 🎨 Renk Paleti
 
 ### Light Mode
+
 - **Primary**: Blue 600 → Indigo 600 gradient
 - **Success**: Green 500
 - **Warning**: Amber 500
@@ -32,6 +36,7 @@
 - **Surface**: White with backdrop-blur
 
 ### Dark Mode
+
 - **Primary**: Blue 400 → Indigo 400 gradient
 - **Background**: Gray 950 → Slate 900 → Gray 900 gradient
 - **Surface**: Gray 900 with opacity
@@ -40,6 +45,7 @@
 ## 🎭 Animasyonlar
 
 ### Mikro İnteraksiyonlar
+
 - Button hover: Scale 1.02 + brightness
 - Card hover: Lift effect (shadow)
 - Input focus: Border glow
@@ -47,11 +53,13 @@
 - Loading spinners: Smooth rotation
 
 ### Transition'lar
+
 - **Hızlı**: 150ms (button, switch)
 - **Normal**: 300ms (card, modal)
 - **Yavaş**: 500ms (page transition)
 
 ### Loading States
+
 - Skeleton screens
 - Spinner animations
 - Progress indicators
@@ -112,30 +120,35 @@ PrinterDashboard (Ana Layout)
 ## 🎯 UX Prensipleri
 
 ### 1. Clarity (Netlik)
+
 - Açık ve anlaşılır label'lar
 - Türkçe dil desteği
 - İkon + Metin kombinasyonu
 - Tooltip'ler ve yardım metinleri
 
 ### 2. Feedback (Geri Bildirim)
+
 - Toast notifications
 - Loading states
 - Success/Error messages
 - Visual state changes
 
 ### 3. Consistency (Tutarlılık)
+
 - Shadcn UI design system
 - Tutarlı spacing (4px grid)
 - Tutarlı renk kullanımı
 - Tutarlı typography
 
 ### 4. Efficiency (Verimlilik)
+
 - Otomatik yazıcı algılama
 - Drag & drop
 - Keyboard shortcuts
 - Smart defaults
 
 ### 5. Error Prevention
+
 - Disabled states
 - Validation messages
 - Confirmation dialogs
@@ -194,12 +207,14 @@ Border-based separation
 ## 🔔 Toast Notification System
 
 ### Variants
+
 - **Success**: Green background, checkmark icon
 - **Error**: Red background, X icon
 - **Info**: Blue background, info icon
 - **Warning**: Amber background, warning icon
 
 ### Behavior
+
 - Auto-dismiss: 5 seconds
 - Position: Top-right
 - Animation: Slide-in + fade
@@ -208,6 +223,7 @@ Border-based separation
 ## 🎨 Icon System (Lucide React)
 
 ### Kategoriler
+
 - **Actions**: Printer, Upload, Download, Trash
 - **Status**: CheckCircle, XCircle, Loader, Activity
 - **Navigation**: Settings, Image, FileText
@@ -215,6 +231,7 @@ Border-based separation
 - **Info**: Info, HelpCircle, AlertCircle
 
 ### Sizing
+
 - Small: 16px (w-4 h-4)
 - Medium: 20px (w-5 h-5)
 - Large: 24px (w-6 h-6)
@@ -223,10 +240,12 @@ Border-based separation
 ## 🌗 Dark Mode
 
 ### Toggle
+
 - Sistem tercihine göre otomatik
 - Manuel dark mode switch (eklenebilir)
 
 ### Optimizasyonlar
+
 - Tüm renkler dark mode optimize
 - Kontrast oranları WCAG AA uyumlu
 - Gradient'ler dark mode'da düzeltilmiş
@@ -235,6 +254,7 @@ Border-based separation
 ## ♿ Accessibility (A11y)
 
 ### WCAG 2.1 AA Uyumluluğu
+
 - ✅ Keyboard navigation
 - ✅ Screen reader support
 - ✅ Color contrast ratios
@@ -244,6 +264,7 @@ Border-based separation
 - ✅ Semantic HTML
 
 ### Focus Management
+
 - Visible focus rings
 - Logical tab order
 - Skip links
@@ -252,6 +273,7 @@ Border-based separation
 ## 🎯 Kullanıcı Akışları
 
 ### 1. Hızlı Görsel Yazdırma
+
 ```
 Kullanıcı giriş
 ↓
@@ -267,6 +289,7 @@ Yazdırma başarılı toast
 ```
 
 ### 2. Metin Yazdırma
+
 ```
 Metin tab'ına geç
 ↓
@@ -282,6 +305,7 @@ Başarı bildirimi
 ```
 
 ### 3. İlk Kurulum
+
 ```
 Uygulama aç
 ↓
@@ -295,17 +319,20 @@ Başarısız → Ayarlar öner
 ## 🚀 Performance Optimizasyonlar
 
 ### Code Splitting
+
 - Page-level code splitting
 - Component lazy loading
 - Dynamic imports
 
 ### Image Optimization
+
 - Next.js Image component
 - WebP format
 - Lazy loading
 - Responsive images
 
 ### CSS Optimization
+
 - Tailwind JIT
 - PurgeCSS
 - Critical CSS inline
@@ -314,12 +341,14 @@ Başarısız → Ayarlar öner
 ## 📊 Metrikler
 
 ### Performans Hedefleri
+
 - First Contentful Paint: < 1.5s
 - Time to Interactive: < 3s
 - Cumulative Layout Shift: < 0.1
 - Lighthouse Score: > 90
 
 ### Bundle Size
+
 - Initial JS: ~150KB (gzipped)
 - Total JS: ~300KB (gzipped)
 - CSS: ~20KB (gzipped)

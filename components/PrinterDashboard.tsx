@@ -2,11 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Printer, Image as ImageIcon, FileText, Settings, Activity, Wifi, UsbIcon, Gauge } from "lucide-react";
+import {
+  Printer,
+  Image as ImageIcon,
+  FileText,
+  Settings,
+  Activity,
+  Wifi,
+  UsbIcon,
+  Gauge,
+} from "lucide-react";
 import ImagePrintPanel from "./ImagePrintPanel";
 import TextPrintPanel from "./TextPrintPanel";
 import PrinterSettingsPanel from "./PrinterSettingsPanel";
@@ -18,7 +33,7 @@ export default function PrinterDashboard() {
   const [printerStatus, setPrinterStatus] = useState({
     connected: false,
     type: "unknown",
-    loading: true
+    loading: true,
   });
   const { toast } = useToast();
 
@@ -30,11 +45,11 @@ export default function PrinterDashboard() {
     try {
       const response = await fetch("/api/printer/auto-detect");
       const data = await response.json();
-      
+
       setPrinterStatus({
         connected: data.success,
         type: data.method || "unknown",
-        loading: false
+        loading: false,
       });
 
       if (data.success) {
@@ -48,7 +63,7 @@ export default function PrinterDashboard() {
       setPrinterStatus({
         connected: false,
         type: "unknown",
-        loading: false
+        loading: false,
       });
     }
   };
@@ -74,18 +89,22 @@ export default function PrinterDashboard() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex items-center gap-3">
-              <Badge 
+              <Badge
                 variant={printerStatus.connected ? "default" : "secondary"}
                 className={`px-4 py-2 text-sm ${
-                  printerStatus.connected 
-                    ? "bg-green-500 hover:bg-green-600" 
+                  printerStatus.connected
+                    ? "bg-green-500 hover:bg-green-600"
                     : "bg-gray-400"
                 }`}
               >
                 <Activity className="w-4 h-4 mr-2" />
-                {printerStatus.loading ? "Kontrol Ediliyor..." : printerStatus.connected ? "Aktif" : "Bağlantı Yok"}
+                {printerStatus.loading
+                  ? "Kontrol Ediliyor..."
+                  : printerStatus.connected
+                  ? "Aktif"
+                  : "Bağlantı Yok"}
               </Badge>
             </div>
           </div>
@@ -94,11 +113,11 @@ export default function PrinterDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Sol Panel - Durum Kartları */}
           <div className="lg:col-span-1 space-y-6">
-            <PrinterStatusCard 
-              status={printerStatus} 
+            <PrinterStatusCard
+              status={printerStatus}
               onRefresh={checkPrinterStatus}
             />
-            
+
             {/* Hızlı İstatistikler */}
             <Card>
               <CardHeader>
@@ -109,25 +128,37 @@ export default function PrinterDashboard() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Yazıcı Modeli</span>
+                  <span className="text-sm text-muted-foreground">
+                    Yazıcı Modeli
+                  </span>
                   <span className="text-sm font-medium">KP-301H</span>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Kağıt Genişliği</span>
+                  <span className="text-sm text-muted-foreground">
+                    Kağıt Genişliği
+                  </span>
                   <span className="text-sm font-medium">80mm</span>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Çözünürlük</span>
+                  <span className="text-sm text-muted-foreground">
+                    Çözünürlük
+                  </span>
                   <span className="text-sm font-medium">203 DPI</span>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Bağlantı Tipi</span>
+                  <span className="text-sm text-muted-foreground">
+                    Bağlantı Tipi
+                  </span>
                   <Badge variant="outline" className="text-xs">
-                    {printerStatus.type === "USB" && <UsbIcon className="w-3 h-3 mr-1" />}
-                    {printerStatus.type === "Network" && <Wifi className="w-3 h-3 mr-1" />}
+                    {printerStatus.type === "USB" && (
+                      <UsbIcon className="w-3 h-3 mr-1" />
+                    )}
+                    {printerStatus.type === "Network" && (
+                      <Wifi className="w-3 h-3 mr-1" />
+                    )}
                     {printerStatus.type || "Otomatik"}
                   </Badge>
                 </div>
@@ -137,7 +168,8 @@ export default function PrinterDashboard() {
             {/* Yardım Kartı */}
             <Alert>
               <AlertDescription className="text-sm">
-                💡 <strong>İpucu:</strong> Yazıcınız otomatik olarak algılanır. Görsel veya metin ekleyip hemen yazdırabilirsiniz.
+                💡 <strong>İpucu:</strong> Yazıcınız otomatik olarak algılanır.
+                Görsel veya metin ekleyip hemen yazdırabilirsiniz.
               </AlertDescription>
             </Alert>
           </div>
@@ -152,17 +184,30 @@ export default function PrinterDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs
+                  value={activeTab}
+                  onValueChange={setActiveTab}
+                  className="w-full"
+                >
                   <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="image" className="flex items-center gap-2">
+                    <TabsTrigger
+                      value="image"
+                      className="flex items-center gap-2"
+                    >
                       <ImageIcon className="w-4 h-4" />
                       <span className="hidden sm:inline">Görsel</span>
                     </TabsTrigger>
-                    <TabsTrigger value="text" className="flex items-center gap-2">
+                    <TabsTrigger
+                      value="text"
+                      className="flex items-center gap-2"
+                    >
                       <FileText className="w-4 h-4" />
                       <span className="hidden sm:inline">Metin</span>
                     </TabsTrigger>
-                    <TabsTrigger value="settings" className="flex items-center gap-2">
+                    <TabsTrigger
+                      value="settings"
+                      className="flex items-center gap-2"
+                    >
                       <Settings className="w-4 h-4" />
                       <span className="hidden sm:inline">Ayarlar</span>
                     </TabsTrigger>
@@ -177,7 +222,9 @@ export default function PrinterDashboard() {
                   </TabsContent>
 
                   <TabsContent value="settings" className="mt-0">
-                    <PrinterSettingsPanel onSettingsChange={checkPrinterStatus} />
+                    <PrinterSettingsPanel
+                      onSettingsChange={checkPrinterStatus}
+                    />
                   </TabsContent>
                 </Tabs>
               </CardContent>
@@ -188,7 +235,7 @@ export default function PrinterDashboard() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-sm text-muted-foreground">
-            © 2025  -  Yazıcı Kontrol Paneli
+            © 2025 - Yazıcı Kontrol Paneli
           </p>
         </div>
       </div>

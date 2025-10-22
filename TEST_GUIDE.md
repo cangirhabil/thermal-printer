@@ -5,6 +5,7 @@
 ### 1. Bağlantı Önceliği Optimizasyonu ✅
 
 **Önceki Davranış:**
+
 ```
 🔄 Tüm yöntemler paralel test ediliyor:
 ├─ COM Portlar (2-3 saniye)
@@ -16,14 +17,15 @@ Toplam: ~18-20 saniye ❌
 ```
 
 **Yeni Davranış:**
+
 ```
 ✅ Sıralı öncelikli kontrol:
 1️⃣ COM/Serial Portlar (2-3 saniye)
    └─ Bulunursa → HEMEN DÖNÜYOR! ✅
-   
+
 2️⃣ Network (sadece COM yoksa) (5-10 saniye)
    └─ Bulunursa → DÖNÜYOR! ✅
-   
+
 3️⃣ Windows Yazıcılar (sadece diğerleri yoksa) (1-2 saniye)
 ═══════════════════════════════
 COM varsa: ~2-3 saniye ✅
@@ -33,6 +35,7 @@ Sadece LAN varsa: ~8-10 saniye ✅
 **Test Senaryoları:**
 
 #### Senaryo A: COM Port Bağlı
+
 ```bash
 # Beklenen Sonuç:
 1. Sayfa yüklenir
@@ -42,6 +45,7 @@ Sadece LAN varsa: ~8-10 saniye ✅
 ```
 
 #### Senaryo B: Sadece LAN Bağlı
+
 ```bash
 # Beklenen Sonuç:
 1. Sayfa yüklenir
@@ -54,10 +58,11 @@ Sadece LAN varsa: ~8-10 saniye ✅
 ### 2. Metin Format Ayarları Backend Entegrasyonu ✅
 
 **Önceki Davranış:**
+
 ```javascript
 // UI'da seçilen ayarlar:
 fontSize: "large"
-alignment: "center"  
+alignment: "center"
 bold: true
 
 // Backend'e gönderilen:
@@ -65,6 +70,7 @@ textData: "Merhaba" ❌ (sadece metin!)
 ```
 
 **Yeni Davranış:**
+
 ```javascript
 // UI'dan backend'e:
 {
@@ -89,6 +95,7 @@ ESC a 0     // Sola hizala
 **Test Senaryoları:**
 
 #### Test 1: Küçük Yazı, Sola, Normal
+
 ```
 Ayarlar:
 - Boyut: Küçük (small)
@@ -102,6 +109,7 @@ ESC E 0x00 (normal)
 ```
 
 #### Test 2: Çok Büyük, Ortala, Kalın
+
 ```
 Ayarlar:
 - Boyut: Çok Büyük (xlarge)
@@ -115,6 +123,7 @@ ESC E 0x01 (kalın)
 ```
 
 #### Test 3: Normal, Sağa, Kalın
+
 ```
 Ayarlar:
 - Boyut: Normal (normal)
@@ -130,6 +139,7 @@ ESC E 0x01 (kalın)
 ### 3. Otomatik Yeniden Bağlanma ✅
 
 **Önceki Davranış:**
+
 ```
 1. Yazıcı çalışıyor ✅
 2. USB kablosu çekilir
@@ -138,6 +148,7 @@ ESC E 0x01 (kalın)
 ```
 
 **Yeni Davranış:**
+
 ```
 1. Yazıcı çalışıyor ✅
 2. USB kablosu çekilir
@@ -154,6 +165,7 @@ ESC E 0x01 (kalın)
 **Test Senaryoları:**
 
 #### Senaryo A: Bağlantı Koptu, Yeniden Bağlandı
+
 ```
 1. Yazıcı COM3'te çalışıyor
 2. USB kablosunu çek
@@ -165,6 +177,7 @@ ESC E 0x01 (kalın)
 ```
 
 #### Senaryo B: COM Koptu, LAN'a Geçti
+
 ```
 1. Yazıcı COM3'te çalışıyor
 2. USB kablosunu çek
@@ -176,6 +189,7 @@ ESC E 0x01 (kalın)
 ```
 
 #### Senaryo C: 3 Deneme Başarısız
+
 ```
 1. Yazıcı çalışıyor
 2. Hem USB hem LAN kablosunu çek
@@ -213,8 +227,8 @@ ESC E 0x01 (kalın)
   - Amber: Retry
   - Kırmızı: 3 deneme başarısız
   - Gri: Bağlantı yok (henüz retry yok)
-  
 - [ ] **Test 12:** Bağlantı tipi badge'i doğru icon gösteriyor mu?
+
   - USB icon: COM/Serial
   - Wifi icon: Network/LAN
   - Monitor icon: Windows
@@ -234,6 +248,7 @@ ESC E 0x01 (kalın)
 ## 📊 Beklenen Console Log Örneği
 
 ### Başarılı COM Bağlantı:
+
 ```
 🔍 Otomatik yazıcı algılama başlatılıyor...
 📋 Öncelik: 1) COM/Serial 2) USB 3) Network 4) Windows
@@ -246,6 +261,7 @@ Toplam süre: ~2-3 saniye ✅
 ```
 
 ### COM Yok, Network Var:
+
 ```
 🔍 Otomatik yazıcı algılama başlatılıyor...
 📋 Öncelik: 1) COM/Serial 2) USB 3) Network 4) Windows
@@ -261,6 +277,7 @@ Toplam süre: ~8-10 saniye ✅
 ```
 
 ### Metin Format ile Yazdırma:
+
 ```
 🤖 OTOMATİK YAZDIRMA - KP-302 Yazıcı
 Görsel: false
@@ -278,17 +295,20 @@ Metin Formatı: { fontSize: 'large', alignment: 'center', bold: true }
 ## 🎯 Başarı Kriterleri
 
 ### Performans:
+
 - ✅ COM varsa < 5 saniye algılama
 - ✅ Sadece LAN varsa < 12 saniye algılama
 - ✅ Yazdırma < 10 saniye
 
 ### Fonksiyonalite:
+
 - ✅ Tüm format seçenekleri çalışıyor
 - ✅ Otomatik retry 3 kez deniyor
 - ✅ COM → LAN failover çalışıyor
 - ✅ Bağlantı koptuğunda otomatik recovery
 
 ### Kullanıcı Deneyimi:
+
 - ✅ Net durum göstergeleri
 - ✅ Retry progress (1/3, 2/3, 3/3)
 - ✅ Renk kodlamalı feedback

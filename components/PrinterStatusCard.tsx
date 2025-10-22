@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Loader2, 
+import {
+  CheckCircle2,
+  XCircle,
+  Loader2,
   RefreshCw,
   Wifi,
   WifiOff,
   UsbIcon,
   Monitor,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 
 interface PrinterStatusCardProps {
@@ -25,19 +25,26 @@ interface PrinterStatusCardProps {
   onRefresh: () => void;
 }
 
-export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCardProps) {
+export default function PrinterStatusCard({
+  status,
+  onRefresh,
+}: PrinterStatusCardProps) {
   const [autoRetryCount, setAutoRetryCount] = useState(0);
-  const [lastConnectionType, setLastConnectionType] = useState<string | null>(null);
+  const [lastConnectionType, setLastConnectionType] = useState<string | null>(
+    null
+  );
 
   // Bağlantı koptuğunda otomatik yeniden bağlanma
   useEffect(() => {
     let retryTimer: NodeJS.Timeout;
 
     if (!status.connected && !status.loading && autoRetryCount < 3) {
-      console.log(`🔄 Bağlantı koptu, yeniden deneniyor... (${autoRetryCount + 1}/3)`);
-      
+      console.log(
+        `🔄 Bağlantı koptu, yeniden deneniyor... (${autoRetryCount + 1}/3)`
+      );
+
       retryTimer = setTimeout(() => {
-        setAutoRetryCount(prev => prev + 1);
+        setAutoRetryCount((prev) => prev + 1);
         onRefresh();
       }, 5000); // 5 saniye sonra tekrar dene
     } else if (status.connected) {
@@ -51,7 +58,13 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
     return () => {
       if (retryTimer) clearTimeout(retryTimer);
     };
-  }, [status.connected, status.loading, autoRetryCount, onRefresh, status.type]);
+  }, [
+    status.connected,
+    status.loading,
+    autoRetryCount,
+    onRefresh,
+    status.type,
+  ]);
 
   const getStatusIcon = () => {
     if (status.loading) {
@@ -94,13 +107,17 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
 
   const getConnectionIcon = () => {
     const type = (status.type || lastConnectionType || "").toLowerCase();
-    if (type.includes('usb') || type.includes('serial') || type.includes('com')) {
+    if (
+      type.includes("usb") ||
+      type.includes("serial") ||
+      type.includes("com")
+    ) {
       return <UsbIcon className="w-5 h-5" />;
     }
-    if (type.includes('network') || type.includes('ethernet')) {
+    if (type.includes("network") || type.includes("ethernet")) {
       return <Wifi className="w-5 h-5" />;
     }
-    if (type.includes('windows')) {
+    if (type.includes("windows")) {
       return <Monitor className="w-5 h-5" />;
     }
     return <WifiOff className="w-5 h-5" />;
@@ -111,8 +128,8 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
       <CardHeader>
         <CardTitle className="text-lg flex items-center justify-between">
           <span>Yazıcı Durumu</span>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             size="sm"
             onClick={() => {
               setAutoRetryCount(0); // Retry sayacını sıfırla
@@ -120,7 +137,9 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
             }}
             disabled={status.loading}
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${status.loading ? 'animate-spin' : ''}`} />
+            <RefreshCw
+              className={`w-4 h-4 mr-2 ${status.loading ? "animate-spin" : ""}`}
+            />
             Yenile
           </Button>
         </CardTitle>
@@ -129,9 +148,7 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
         {/* Durum İkonu */}
         <div className="flex flex-col items-center justify-center py-6">
           {getStatusIcon()}
-          <p className="mt-4 text-lg font-semibold">
-            {getStatusText()}
-          </p>
+          <p className="mt-4 text-lg font-semibold">{getStatusText()}</p>
           <p className="text-sm text-muted-foreground mt-1">
             {getStatusDescription()}
           </p>
@@ -167,7 +184,8 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
               {lastConnectionType && `Son bağlantı: ${lastConnectionType}`}
             </p>
             <p className="text-xs text-amber-700 dark:text-amber-300">
-              Deneme {autoRetryCount}/3 - Önce COM, sonra LAN kontrol ediliyor...
+              Deneme {autoRetryCount}/3 - Önce COM, sonra LAN kontrol
+              ediliyor...
             </p>
           </div>
         )}
@@ -200,8 +218,8 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
               <li>Sonra LAN bağlantısı denendi</li>
               <li>Her ikisi de başarısız</li>
             </ul>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               size="sm"
               onClick={() => {
                 setAutoRetryCount(0);
@@ -216,35 +234,43 @@ export default function PrinterStatusCard({ status, onRefresh }: PrinterStatusCa
 
         {/* Bağlantı Seçenekleri */}
         <div className="grid grid-cols-2 gap-2 pt-2">
-          <div className={`text-center p-3 rounded-lg ${
-            status.type?.toLowerCase().includes('com') || 
-            status.type?.toLowerCase().includes('usb') || 
-            status.type?.toLowerCase().includes('serial')
-              ? 'bg-green-50 dark:bg-green-950/20 border-2 border-green-500' 
-              : 'bg-blue-50 dark:bg-blue-950/20'
-          }`}>
-            <UsbIcon className={`w-5 h-5 mx-auto mb-1 ${
-              status.type?.toLowerCase().includes('com') || 
-              status.type?.toLowerCase().includes('usb') || 
-              status.type?.toLowerCase().includes('serial')
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-blue-600 dark:text-blue-400'
-            }`} />
+          <div
+            className={`text-center p-3 rounded-lg ${
+              status.type?.toLowerCase().includes("com") ||
+              status.type?.toLowerCase().includes("usb") ||
+              status.type?.toLowerCase().includes("serial")
+                ? "bg-green-50 dark:bg-green-950/20 border-2 border-green-500"
+                : "bg-blue-50 dark:bg-blue-950/20"
+            }`}
+          >
+            <UsbIcon
+              className={`w-5 h-5 mx-auto mb-1 ${
+                status.type?.toLowerCase().includes("com") ||
+                status.type?.toLowerCase().includes("usb") ||
+                status.type?.toLowerCase().includes("serial")
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-blue-600 dark:text-blue-400"
+              }`}
+            />
             <p className="text-xs font-medium">COM Port</p>
             <p className="text-xs text-muted-foreground">Öncelik 1</p>
           </div>
-          <div className={`text-center p-3 rounded-lg ${
-            status.type?.toLowerCase().includes('network') || 
-            status.type?.toLowerCase().includes('ethernet')
-              ? 'bg-green-50 dark:bg-green-950/20 border-2 border-green-500' 
-              : 'bg-purple-50 dark:bg-purple-950/20'
-          }`}>
-            <Wifi className={`w-5 h-5 mx-auto mb-1 ${
-              status.type?.toLowerCase().includes('network') || 
-              status.type?.toLowerCase().includes('ethernet')
-                ? 'text-green-600 dark:text-green-400' 
-                : 'text-purple-600 dark:text-purple-400'
-            }`} />
+          <div
+            className={`text-center p-3 rounded-lg ${
+              status.type?.toLowerCase().includes("network") ||
+              status.type?.toLowerCase().includes("ethernet")
+                ? "bg-green-50 dark:bg-green-950/20 border-2 border-green-500"
+                : "bg-purple-50 dark:bg-purple-950/20"
+            }`}
+          >
+            <Wifi
+              className={`w-5 h-5 mx-auto mb-1 ${
+                status.type?.toLowerCase().includes("network") ||
+                status.type?.toLowerCase().includes("ethernet")
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-purple-600 dark:text-purple-400"
+              }`}
+            />
             <p className="text-xs font-medium">LAN</p>
             <p className="text-xs text-muted-foreground">Öncelik 2</p>
           </div>

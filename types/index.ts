@@ -8,16 +8,16 @@ export interface ConnectionType {
 
 export interface PrintJob {
   id: string;
-  type: 'image' | 'text';
+  type: "image" | "text";
   content: string;
   timestamp: Date;
-  status: 'pending' | 'printing' | 'completed' | 'failed';
+  status: "pending" | "printing" | "completed" | "failed";
   settings?: PrintSettings;
 }
 
 export interface PrintSettings {
-  fontSize?: 'small' | 'normal' | 'large' | 'xlarge';
-  alignment?: 'left' | 'center' | 'right';
+  fontSize?: "small" | "normal" | "large" | "xlarge";
+  alignment?: "left" | "center" | "right";
   bold?: boolean;
   copies?: number;
   cutPaper?: boolean;
@@ -28,7 +28,7 @@ export interface PrinterInfo {
   paperWidth: string;
   resolution: string;
   connectionType: string;
-  status: 'online' | 'offline' | 'error' | 'busy';
+  status: "online" | "offline" | "error" | "busy";
 }
 
 export interface ApiResponse<T = any> {

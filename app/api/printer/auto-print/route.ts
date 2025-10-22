@@ -5,7 +5,9 @@ import sharp from "sharp";
 // Güvenli ThermalPrinter kütüphanesi
 async function getThermalPrinter() {
   try {
-    const { ThermalPrinter, PrinterTypes } = await import("node-thermal-printer");
+    const { ThermalPrinter, PrinterTypes } = await import(
+      "node-thermal-printer"
+    );
     return { ThermalPrinter, PrinterTypes };
   } catch (error) {
     console.error("ThermalPrinter yüklenemedi:", error);
@@ -169,7 +171,7 @@ async function trySerialPorts(
 
           // Sol kenar boşluğu ekle
           const leftPadding = " ".repeat(leftMarginChars);
-          
+
           // Metni satır satır yazdır
           const lines = textData.split("\n");
           for (const line of lines) {
@@ -199,7 +201,7 @@ async function trySerialPorts(
 
         // Yazdır
         await printer.execute();
-        
+
         console.log(`✅ ${portPath} yazdırma başarılı!`);
         return {
           method: "Serial/USB (ThermalPrinter)",
@@ -494,8 +496,10 @@ export async function POST(request: NextRequest) {
       error: "Yazıcı bulunamadı - COM Port ve Ethernet bağlantısı müsait değil",
       attempts,
       troubleshooting: {
-        comPort: "USB kablosu takılı mı? Cihaz Yöneticisi'nde COM portu görünüyor mu?",
-        ethernet: "Network kablosu bağlı mı? IP adresi doğru mu? (192.168.2.211)",
+        comPort:
+          "USB kablosu takılı mı? Cihaz Yöneticisi'nde COM portu görünüyor mu?",
+        ethernet:
+          "Network kablosu bağlı mı? IP adresi doğru mu? (192.168.2.211)",
       },
     });
   } catch (error: any) {

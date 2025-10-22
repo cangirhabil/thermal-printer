@@ -5,6 +5,7 @@ Modern, profesyonel ve responsive termal yazıcı kontrol paneli. Next.js 14 ve 
 ## ✨ Özellikler
 
 ### 🎨 Modern UI/UX
+
 - **Shadcn UI** komponentleri ile profesyonel tasarım
 - **Tam responsive** - Mobil, tablet ve desktop için optimize
 - **Dark mode** desteği
@@ -12,13 +13,16 @@ Modern, profesyonel ve responsive termal yazıcı kontrol paneli. Next.js 14 ve 
 - **Lucide Icons** ile modern ikonlar
 
 ### 🖨️ Yazdırma Özellikleri
+
 - **Görsel Yazdırma**
+
   - Drag & drop görsel yükleme
   - Önizleme desteği
   - PNG, JPG, GIF formatları
   - Otomatik boyutlandırma (576px genişlik)
 
 - **Metin Yazdırma**
+
   - Çoklu satır metin desteği
   - Yazı boyutu seçimi (Küçük, Normal, Büyük, Çok Büyük)
   - Hizalama (Sol, Orta, Sağ)
@@ -32,12 +36,14 @@ Modern, profesyonel ve responsive termal yazıcı kontrol paneli. Next.js 14 ve 
   - Windows yazıcıları
 
 ### ⚙️ Ayarlar
+
 - Manuel bağlantı seçimi
 - Port tarama ve listeleme
 - Network yapılandırması
 - Bağlantı testi
 
 ### 📊 Durum Takibi
+
 - Gerçek zamanlı yazıcı durumu
 - Bağlantı tipi gösterimi
 - Hızlı bilgiler kartı
@@ -71,12 +77,14 @@ npm start
 ## 🎯 Kullanım
 
 ### Görsel Yazdırma
+
 1. **Görsel** sekmesine tıklayın
 2. Görseli sürükleyip bırakın veya dosya seçin
 3. Önizlemeyi kontrol edin
 4. **Yazdır** butonuna tıklayın
 
 ### Metin Yazdırma
+
 1. **Metin** sekmesine tıklayın
 2. Metni yazın
 3. Formatı ayarlayın (boyut, hizalama, kalın)
@@ -84,6 +92,7 @@ npm start
 5. **Yazdır** butonuna tıklayın
 
 ### Yazıcı Ayarları
+
 1. **Ayarlar** sekmesine tıklayın
 2. Bağlantı tipini seçin (varsayılan: Otomatik)
 3. Gerekirse manuel ayarlar yapın
@@ -92,12 +101,14 @@ npm start
 ## 🔧 Yapılandırma
 
 ### Yazıcı Özellikleri
+
 - **Model**: KP-301H
 - **Kağıt Genişliği**: 80mm
 - **Çözünürlük**: 203 DPI
 - **Maksimum Genişlik**: 576 piksel
 
 ### Desteklenen Bağlantı Tipleri
+
 - USB
 - Serial (COM portları)
 - Network (TCP/IP)
@@ -106,6 +117,7 @@ npm start
 ## 📱 Responsive Tasarım
 
 Uygulama tüm ekran boyutlarında mükemmel çalışır:
+
 - **Mobil** (< 640px): Tek sütun, stack layout
 - **Tablet** (640px - 1024px): Adapte edilmiş grid
 - **Desktop** (> 1024px): Tam özellikli 3 sütun layout
@@ -113,6 +125,7 @@ Uygulama tüm ekran boyutlarında mükemmel çalışır:
 ## 🎨 UI Komponentleri
 
 ### Ana Komponentler
+
 - `PrinterDashboard` - Ana kontrol paneli
 - `ImagePrintPanel` - Görsel yazdırma paneli
 - `TextPrintPanel` - Metin yazdırma paneli
@@ -120,6 +133,7 @@ Uygulama tüm ekran boyutlarında mükemmel çalışır:
 - `PrinterStatusCard` - Durum kartı
 
 ### Shadcn UI Komponentleri
+
 - Button
 - Card
 - Input
@@ -155,17 +169,20 @@ POST /api/printer/print-raw
 ## 🐛 Sorun Giderme
 
 ### Yazıcı Algılanmıyor
+
 - USB kablosunu kontrol edin
 - Yazıcının açık olduğundan emin olun
 - Sürücülerin yüklü olduğunu kontrol edin
 - Farklı USB portu deneyin
 
 ### Bozuk Çıktı
+
 - Kağıt genişliğini kontrol edin (80mm olmalı)
 - Görsel boyutunu 576px genişlik olarak ayarlayın
 - Yazıcı ayarlarını sıfırlayın
 
 ### Network Bağlantı Sorunları
+
 - Yazıcı ve bilgisayar aynı ağda olmalı
 - IP adresini kontrol edin
 - Port numarasını kontrol edin (varsayılan: 9100)

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Printer, 
-  FileText, 
+import {
+  Printer,
+  FileText,
   Loader2,
   AlignLeft,
   AlignCenter,
@@ -25,7 +25,7 @@ import {
   Type,
   Trash2,
   Space,
-  Move
+  Move,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
@@ -65,8 +65,8 @@ export default function TextPrintPanel() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          imageData: "", 
+        body: JSON.stringify({
+          imageData: "",
           textData,
           textOptions: {
             fontSize,
@@ -77,8 +77,8 @@ export default function TextPrintPanel() {
             lineSpacing,
             leftMargin,
             topSpacing,
-            bottomSpacing
-          }
+            bottomSpacing,
+          },
         }),
       });
 
@@ -112,7 +112,7 @@ export default function TextPrintPanel() {
   };
 
   const charCount = textData.length;
-  const lineCount = textData.split('\n').length;
+  const lineCount = textData.split("\n").length;
 
   return (
     <div className="space-y-6">
@@ -146,7 +146,9 @@ export default function TextPrintPanel() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Yazı Boyutu */}
             <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Yazı Boyutu</Label>
+              <Label className="text-sm text-muted-foreground">
+                Yazı Boyutu
+              </Label>
               <Select value={fontSize} onValueChange={setFontSize}>
                 <SelectTrigger>
                   <SelectValue />
@@ -267,7 +269,9 @@ export default function TextPrintPanel() {
                 </Label>
                 <Slider
                   value={[bottomSpacing]}
-                  onValueChange={(value: number[]) => setBottomSpacing(value[0])}
+                  onValueChange={(value: number[]) =>
+                    setBottomSpacing(value[0])
+                  }
                   min={0}
                   max={10}
                   step={1}
@@ -283,7 +287,10 @@ export default function TextPrintPanel() {
           <div className="grid grid-cols-2 gap-4">
             {/* Kalın Yazı */}
             <div className="flex items-center justify-between py-2">
-              <Label className="text-sm text-muted-foreground cursor-pointer" htmlFor="bold-switch">
+              <Label
+                className="text-sm text-muted-foreground cursor-pointer"
+                htmlFor="bold-switch"
+              >
                 Kalın Yazı
               </Label>
               <Switch
@@ -295,7 +302,10 @@ export default function TextPrintPanel() {
 
             {/* Altı Çizili */}
             <div className="flex items-center justify-between py-2">
-              <Label className="text-sm text-muted-foreground cursor-pointer" htmlFor="underline-switch">
+              <Label
+                className="text-sm text-muted-foreground cursor-pointer"
+                htmlFor="underline-switch"
+              >
                 Altı Çizili
               </Label>
               <Switch
@@ -354,34 +364,44 @@ export default function TextPrintPanel() {
                 <p className="text-sm font-medium text-purple-900 dark:text-purple-100">
                   Metin Önizleme
                 </p>
-                <div 
+                <div
                   className={`text-sm bg-white dark:bg-gray-800 p-3 rounded border transition-all duration-200 ${
-                    alignment === 'center' ? 'text-center' : 
-                    alignment === 'right' ? 'text-right' : 'text-left'
-                  } ${bold ? 'font-bold' : 'font-normal'} ${
-                    underline ? 'underline' : ''
+                    alignment === "center"
+                      ? "text-center"
+                      : alignment === "right"
+                      ? "text-right"
+                      : "text-left"
+                  } ${bold ? "font-bold" : "font-normal"} ${
+                    underline ? "underline" : ""
                   }`}
                   style={{
-                    fontSize: fontSize === 'small' ? '12px' : 
-                             fontSize === 'large' ? '18px' : 
-                             fontSize === 'xlarge' ? '24px' : '14px',
-                    fontFamily: fontType === 'B' ? 'monospace' : 'system-ui',
+                    fontSize:
+                      fontSize === "small"
+                        ? "12px"
+                        : fontSize === "large"
+                        ? "18px"
+                        : fontSize === "xlarge"
+                        ? "24px"
+                        : "14px",
+                    fontFamily: fontType === "B" ? "monospace" : "system-ui",
                     lineHeight: `${lineSpacing / 10}px`,
                     paddingLeft: `${leftMargin}px`,
                     paddingTop: `${topSpacing * 4}px`,
                     paddingBottom: `${bottomSpacing * 4}px`,
                   }}
                 >
-                  {textData.split('\n').map((line, i) => (
-                    <div key={i}>{line || '\u00A0'}</div>
+                  {textData.split("\n").map((line, i) => (
+                    <div key={i}>{line || "\u00A0"}</div>
                   ))}
                 </div>
                 <p className="text-xs text-purple-700 dark:text-purple-300">
-                  Font: {fontType}, 
-                  Boyut: {fontSize}, 
-                  Hizalama: {alignment === "left" ? "Sol" : alignment === "center" ? "Orta" : "Sağ"}, 
-                  Satır: {lineSpacing}dot, 
-                  Sol Kenar: {leftMargin}px
+                  Font: {fontType}, Boyut: {fontSize}, Hizalama:{" "}
+                  {alignment === "left"
+                    ? "Sol"
+                    : alignment === "center"
+                    ? "Orta"
+                    : "Sağ"}
+                  , Satır: {lineSpacing}dot, Sol Kenar: {leftMargin}px
                 </p>
               </div>
             </div>

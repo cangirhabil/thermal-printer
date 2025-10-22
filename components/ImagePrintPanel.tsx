@@ -7,15 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  Upload, 
-  X, 
-  Printer, 
-  Image as ImageIcon, 
+import {
+  Upload,
+  X,
+  Printer,
+  Image as ImageIcon,
   Loader2,
   FileImage,
   ZoomIn,
-  Download
+  Download,
 } from "lucide-react";
 
 export default function ImagePrintPanel() {
@@ -262,7 +262,8 @@ export default function ImagePrintPanel() {
                   Görsel Hazır
                 </p>
                 <p className="text-xs text-blue-700 dark:text-blue-300">
-                  Görsel otomatik olarak termal yazıcı formatına dönüştürülecek ve yazdırılacaktır.
+                  Görsel otomatik olarak termal yazıcı formatına dönüştürülecek
+                  ve yazdırılacaktır.
                 </p>
               </div>
             </div>

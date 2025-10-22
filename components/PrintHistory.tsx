@@ -1,24 +1,30 @@
 "use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { 
-  FileText, 
-  Image as ImageIcon, 
+import {
+  FileText,
+  Image as ImageIcon,
   Clock,
   CheckCircle,
   XCircle,
   Loader2,
-  Trash2
+  Trash2,
 } from "lucide-react";
 
 interface PrintHistoryItem {
   id: string;
-  type: 'image' | 'text';
+  type: "image" | "text";
   timestamp: Date;
-  status: 'success' | 'error';
+  status: "success" | "error";
   preview?: string;
 }
 
@@ -28,9 +34,9 @@ export default function PrintHistory() {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'error':
+      case "error":
         return <XCircle className="w-4 h-4 text-red-500" />;
       default:
         return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
@@ -38,9 +44,11 @@ export default function PrintHistory() {
   };
 
   const getTypeIcon = (type: string) => {
-    return type === 'image' ? 
-      <ImageIcon className="w-4 h-4" /> : 
-      <FileText className="w-4 h-4" />;
+    return type === "image" ? (
+      <ImageIcon className="w-4 h-4" />
+    ) : (
+      <FileText className="w-4 h-4" />
+    );
   };
 
   return (
@@ -58,9 +66,7 @@ export default function PrintHistory() {
             </Button>
           )}
         </CardTitle>
-        <CardDescription>
-          Son yazdırma işlemleriniz
-        </CardDescription>
+        <CardDescription>Son yazdırma işlemleriniz</CardDescription>
       </CardHeader>
       <CardContent>
         {history.length === 0 ? (
@@ -83,10 +89,12 @@ export default function PrintHistory() {
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-medium">
-                        {item.type === 'image' ? 'Görsel Yazdırma' : 'Metin Yazdırma'}
+                        {item.type === "image"
+                          ? "Görsel Yazdırma"
+                          : "Metin Yazdırma"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {item.timestamp.toLocaleString('tr-TR')}
+                        {item.timestamp.toLocaleString("tr-TR")}
                       </p>
                     </div>
                     {getStatusIcon(item.status)}

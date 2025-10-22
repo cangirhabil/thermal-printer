@@ -7,17 +7,20 @@
 #### 1. Bağlantı Önceliği Optimizasyonu
 
 **Sorun:**
+
 - Yazıcı algılaması tüm yöntemleri (USB, Serial, Network, Windows) paralel olarak deniyordu
 - Bu, kullanıcının gereksiz yere beklemesine neden oluyordu
 - LAN bağlantısı da eşzamanlı denendiği için timeout süreleri uzuyordu
 
 **Çözüm:**
+
 - Bağlantı önceliği sıralı hale getirildi:
   1. **ÖNCELİK 1:** COM/Serial portlar (USB bağlantı)
   2. **ÖNCELİK 2:** Network/LAN bağlantı
   3. **ÖNCELİK 3:** Windows yazıcılar
 
 **Değişiklikler:**
+
 ```typescript
 // ÖNCESİ: Paralel kontrol (yavaş)
 const [serialResults, networkResult, windowsResults] = await Promise.all([
@@ -40,10 +43,12 @@ const windowsResults = await detectWindowsPrinters();
 ```
 
 **Dosyalar:**
+
 - `app/api/printer/auto-detect/route.ts`
 - `app/api/printer/auto-print/route.ts`
 
 **Avantajlar:**
+
 - ✅ Daha hızlı algılama (COM port varsa anında bulur)
 - ✅ Gereksiz network timeout'ları yok
 - ✅ Kullanıcı daha az bekler
@@ -54,11 +59,13 @@ const windowsResults = await detectWindowsPrinters();
 #### 2. Metin Formatı Ayarlarının Backend Entegrasyonu
 
 **Sorun:**
+
 - UI'da metin boyutu, hizalama ve kalın yazı ayarları vardı
 - Ancak bu ayarlar backend'e gönderilmiyordu
 - Yazdırma işleminde formatlar uygulanmıyordu
 
 **Çözüm:**
+
 - `textOptions` parametresi eklendi
 - ESC/POS komutları format ayarlarına göre dinamik oluşturuluyor
 - Hem COM hem Network bağlantılarında formatlar uygulanıyor
@@ -66,6 +73,7 @@ const windowsResults = await detectWindowsPrinters();
 **Yeni Özellikler:**
 
 ##### A. Yazı Boyutu (Font Size)
+
 ```typescript
 fontSize: "small" | "normal" | "large" | "xlarge"
 
@@ -77,37 +85,40 @@ xlarge: 0x33 (4x4)
 ```
 
 ##### B. Hizalama (Alignment)
+
 ```typescript
-alignment: "left" | "center" | "right"
+alignment: "left" | "center" | "right";
 
 // ESC/POS Komutları (ESC a n)
-left:   0x00
-center: 0x01
-right:  0x02
+left: 0x00;
+center: 0x01;
+right: 0x02;
 ```
 
 ##### C. Kalın Yazı (Bold)
+
 ```typescript
-bold: boolean
+bold: boolean;
 
 // ESC/POS Komutları (ESC E n)
-off: 0x00
-on:  0x01
+off: 0x00;
+on: 0x01;
 ```
 
 **Kod Örneği:**
+
 ```typescript
 // Frontend (TextPrintPanel.tsx)
 const response = await fetch("/api/printer/auto-print", {
   method: "POST",
-  body: JSON.stringify({ 
+  body: JSON.stringify({
     textData,
     textOptions: {
       fontSize: "large",
       alignment: "center",
-      bold: true
-    }
-  })
+      bold: true,
+    },
+  }),
 });
 
 // Backend (auto-print/route.ts)
@@ -126,10 +137,12 @@ if (textOptions?.bold) {
 ```
 
 **Dosyalar:**
+
 - `app/api/printer/auto-print/route.ts`
 - `components/TextPrintPanel.tsx`
 
 **Avantajlar:**
+
 - ✅ UI ayarları artık gerçekten çalışıyor
 - ✅ Tüm format seçenekleri backend'de uygulanıyor
 - ✅ Hem COM hem Network için aynı formatlar
@@ -140,10 +153,12 @@ if (textOptions?.bold) {
 #### 3. Otomatik Yeniden Bağlanma Özelliği
 
 **Sorun:**
+
 - Bağlantı koptuğunda kullanıcı manuel olarak yenileme yapmalıydı
 - Yazıcı kapandığında sistem hemen algılayamıyordu
 
 **Çözüm:**
+
 - Otomatik yeniden bağlanma mekanizması eklendi
 - 3 deneme hakkı (5 saniye aralıklarla)
 - Her deneme önce COM, sonra LAN kontrol eder
@@ -152,12 +167,13 @@ if (textOptions?.bold) {
 **Özellikler:**
 
 ##### Otomatik Retry Mantığı
+
 ```typescript
 useEffect(() => {
   if (!connected && !loading && autoRetryCount < 3) {
     // 5 saniye bekle
     setTimeout(() => {
-      setAutoRetryCount(prev => prev + 1);
+      setAutoRetryCount((prev) => prev + 1);
       onRefresh(); // Yeniden kontrol et
     }, 5000);
   } else if (connected) {
@@ -168,14 +184,17 @@ useEffect(() => {
 ```
 
 ##### Görsel Geri Bildirim
+
 - **Retry sırasında:** Amber badge + "Yeniden Bağlanıyor (1/3)"
 - **Başarılı:** Yeşil badge + bağlantı tipi
 - **3 deneme başarısız:** Kırmızı uyarı + manuel deneme butonu
 
 **Dosyalar:**
+
 - `components/PrinterStatusCard.tsx`
 
 **Avantajlar:**
+
 - ✅ Kullanıcı müdahalesi minimum
 - ✅ Yazıcı açıldığında otomatik bağlanır
 - ✅ COM koptuğunda LAN'a geçer
@@ -188,14 +207,17 @@ useEffect(() => {
 #### Önce vs Sonra
 
 **Yazıcı Algılama Süresi:**
+
 - **Önce:** ~18-20 saniye (tüm yöntemler paralel)
 - **Sonra:** ~2-3 saniye (COM varsa), ~8-10 saniye (sadece LAN varsa)
 
 **Bağlantı Kopma Senaryosu:**
+
 - **Önce:** Kullanıcı manuel yenileme yapmalı
 - **Sonra:** 5 saniyede otomatik yeniden bağlanır
 
 **Format Ayarları:**
+
 - **Önce:** UI'da çalışıyor, yazdırmada çalışmıyor
 - **Sonra:** Her ikisinde de çalışıyor ✅
 
@@ -204,6 +226,7 @@ useEffect(() => {
 ### 🎯 Kullanıcı Senaryoları
 
 #### Senaryo 1: Normal Kullanım (COM Port)
+
 ```
 1. Uygulama açılır
 2. COM port kontrol edilir (~2 saniye)
@@ -212,6 +235,7 @@ useEffect(() => {
 ```
 
 #### Senaryo 2: COM Yok, LAN Var
+
 ```
 1. Uygulama açılır
 2. COM portlar kontrol edilir (~2 saniye)
@@ -222,6 +246,7 @@ useEffect(() => {
 ```
 
 #### Senaryo 3: Bağlantı Kopması
+
 ```
 1. Yazıcı çalışıyor (COM3)
 2. USB kablosu çıkarılır
@@ -234,6 +259,7 @@ useEffect(() => {
 ```
 
 #### Senaryo 4: Metin Formatı ile Yazdırma
+
 ```
 1. Metin tab'ına geç
 2. Metin yaz: "SATIŞ FİŞİ"
@@ -253,6 +279,7 @@ useEffect(() => {
 ### 🔧 Teknik Detaylar
 
 #### ESC/POS Komut Sırası (Metin Formatı)
+
 ```
 1. ESC d 2        → Satır boşluğu
 2. ESC a n        → Hizalama (0=sol, 1=orta, 2=sağ)
@@ -265,23 +292,24 @@ useEffect(() => {
 ```
 
 #### Bağlantı Öncelik Algoritması
+
 ```
 function detectPrinter():
   1. serialPorts = detectSerialPorts()
   2. FOR EACH port in serialPorts:
        IF testPort(port) SUCCESS:
          RETURN port
-  
+
   3. IF no serial port found:
        networkDevices = detectNetwork()
        FOR EACH device in networkDevices:
          IF testNetwork(device) SUCCESS:
            RETURN device
-  
+
   4. IF no network found:
        windowsPrinters = detectWindowsPrinters()
        RETURN first working printer
-  
+
   5. RETURN error
 ```
 
@@ -290,18 +318,21 @@ function detectPrinter():
 ### 📝 Test Edilenler
 
 #### ✅ Bağlantı Testleri
+
 - [x] COM port ilk öncelik olarak deneniyor
 - [x] COM yoksa LAN deneniyor
 - [x] Her iki yöntem de ESC/POS komutları gönderiyor
 - [x] Bağlantı koptuğunda otomatik retry çalışıyor
 
 #### ✅ Format Testleri
+
 - [x] Yazı boyutu değişiklikleri uygulanıyor
 - [x] Hizalama (sol/orta/sağ) çalışıyor
 - [x] Kalın yazı aktif/pasif oluyor
 - [x] Formatlar yazdırma sonrası sıfırlanıyor
 
 #### ✅ Performans Testleri
+
 - [x] COM var: ~2-3 saniyede algılama
 - [x] Sadece LAN var: ~8-10 saniyede algılama
 - [x] Otomatik retry: 5 saniye aralıkla 3 deneme
@@ -311,6 +342,7 @@ function detectPrinter():
 ### 🎨 UI İyileştirmeleri
 
 #### PrinterStatusCard Güncellemeleri
+
 - ✅ Otomatik retry durumu gösterimi
 - ✅ Amber badge animasyonlu "Yeniden Bağlanıyor"
 - ✅ Retry sayacı (1/3, 2/3, 3/3)
@@ -318,6 +350,7 @@ function detectPrinter():
 - ✅ Öncelik göstergesi (COM: Öncelik 1, LAN: Öncelik 2)
 
 #### TextPrintPanel Güncellemeleri
+
 - ✅ Format ayarları backend'e gönderiliyor
 - ✅ Tüm seçenekler aktif
 
@@ -328,6 +361,7 @@ function detectPrinter():
 **Tüm sorunlar çözüldü ve sistem optimize edildi!**
 
 #### Ana İyileştirmeler:
+
 1. ✅ **Bağlantı önceliği:** COM → LAN → Windows
 2. ✅ **Metin formatları:** Tüm ayarlar backend'de uygulanıyor
 3. ✅ **Otomatik retry:** 3 deneme, 5 saniye aralıkla
@@ -335,6 +369,7 @@ function detectPrinter():
 5. ✅ **Kullanıcı deneyimi:** Minimum müdahale, maksimum otomasyon
 
 #### Kullanıcı Faydaları:
+
 - ⚡ Daha hızlı bağlantı
 - 🔄 Otomatik yeniden bağlanma
 - 🎨 Çalışan metin formatları

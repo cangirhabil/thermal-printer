@@ -74,7 +74,8 @@ function applyFloydSteinbergDithering(
 async function trySerialPorts(
   imageData: string | null,
   textData: string,
-  textOptions?: TextOptions
+  textOptions?: TextOptions,
+  skipResize?: boolean
 ): Promise<PrintAttempt> {
   try {
     const { SerialPort } = await import("serialport");
@@ -108,20 +109,31 @@ async function trySerialPorts(
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // Önce grayscale ve resize
-          const processedImage = await sharp(imageBuffer)
-            .resize(576, null, {
-              fit: "inside",
-              withoutEnlargement: false,
-              kernel: sharp.kernel.lanczos3,
-            })
-            .grayscale()
-            .normalise()
-            .raw()
-            .toBuffer({ resolveWithObject: true });
+          // Görsel işleme
+          let processedImage;
+          if (skipResize) {
+            // Boyutlandırma yapma, sadece grayscale ve normalize et
+            processedImage = await sharp(imageBuffer)
+              .grayscale()
+              .normalise()
+              .raw()
+              .toBuffer({ resolveWithObject: true });
+          } else {
+            // Normal işlem - 576px'e resize et
+            processedImage = await sharp(imageBuffer)
+              .resize(576, null, {
+                fit: "inside",
+                withoutEnlargement: false,
+                kernel: sharp.kernel.lanczos3,
+              })
+              .grayscale()
+              .normalise()
+              .raw()
+              .toBuffer({ resolveWithObject: true });
+          }
 
           const { data: rawData, info } = processedImage;
-          const width = Math.min(info.width, 576);
+          const width = skipResize ? info.width : Math.min(info.width, 576);
           const height = info.height;
 
           // Floyd-Steinberg dithering uygula
@@ -385,7 +397,8 @@ try {
 async function tryNetwork(
   imageData: string | null,
   textData: string,
-  textOptions?: TextOptions
+  textOptions?: TextOptions,
+  skipResize?: boolean
 ): Promise<PrintAttempt> {
   const ips = ["192.168.2.211", "192.168.1.100", "192.168.0.100"];
   const ports = [9100, 9101, 9102];
@@ -413,20 +426,31 @@ async function tryNetwork(
           const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
           const imageBuffer = Buffer.from(base64Data, "base64");
 
-          // Önce grayscale ve resize
-          const processedImage = await sharp(imageBuffer)
-            .resize(576, null, {
-              fit: "inside",
-              withoutEnlargement: false,
-              kernel: sharp.kernel.lanczos3,
-            })
-            .grayscale()
-            .normalise()
-            .raw()
-            .toBuffer({ resolveWithObject: true });
+          // Görsel işleme
+          let processedImage;
+          if (skipResize) {
+            // Boyutlandırma yapma, sadece grayscale ve normalize et
+            processedImage = await sharp(imageBuffer)
+              .grayscale()
+              .normalise()
+              .raw()
+              .toBuffer({ resolveWithObject: true });
+          } else {
+            // Normal işlem - 576px'e resize et
+            processedImage = await sharp(imageBuffer)
+              .resize(576, null, {
+                fit: "inside",
+                withoutEnlargement: false,
+                kernel: sharp.kernel.lanczos3,
+              })
+              .grayscale()
+              .normalise()
+              .raw()
+              .toBuffer({ resolveWithObject: true });
+          }
 
           const { data: rawData, info } = processedImage;
-          const width = Math.min(info.width, 576);
+          const width = skipResize ? info.width : Math.min(info.width, 576);
           const height = info.height;
 
           // Floyd-Steinberg dithering uygula
@@ -558,7 +582,7 @@ async function tryNetwork(
 // ==========================================
 export async function POST(request: NextRequest) {
   try {
-    const { imageData, textData, textOptions } = await request.json();
+    const { imageData, textData, textOptions, skipResize } = await request.json();
 
     console.log("========================================");
     console.log("🤖 OTOMATİK YAZDIRMA - KP-302 Yazıcı");
@@ -589,7 +613,7 @@ export async function POST(request: NextRequest) {
     console.log("\n🔌 ÖNCELİK 1: COM PORT BAĞLANTISI (COM3 öncelikli)");
     console.log("========================================");
 
-    const serialResult = await trySerialPorts(imageData, textData, textOptions);
+    const serialResult = await trySerialPorts(imageData, textData, textOptions, skipResize);
     attempts.push(serialResult);
     if (serialResult.success) {
       console.log("✅ COM/SERIAL PORT BAĞLANTISI BAŞARILI!");
@@ -616,7 +640,7 @@ export async function POST(request: NextRequest) {
     console.log("\n🌐 ÖNCELİK 2: ETHERNET BAĞLANTISI");
     console.log("========================================");
 
-    const networkResult = await tryNetwork(imageData, textData, textOptions);
+    const networkResult = await tryNetwork(imageData, textData, textOptions, skipResize);
     attempts.push(networkResult);
     if (networkResult.success) {
       console.log("✅ NETWORK (LAN) BAĞLANTISI BAŞARILI!");

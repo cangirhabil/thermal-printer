@@ -472,22 +472,22 @@ export async function GET(request: NextRequest) {
         } else {
           console.log(`❌ ${lastIP} erişilemez, tam tarama gerekiyor`);
         }
-      } else if (lastMethod === "serial" && lastIP) {
+      } else if ((lastMethod === "serial" || lastMethod === "usb") && lastIP) {
         // Serial port hızlı kontrolü
         try {
-          const testResult = await testPrinter("serial", { path: lastIP });
+          const testResult = await testPrinter(lastMethod === "usb" ? "usb" : "serial", { path: lastIP });
           if (testResult.success) {
             console.log(`✅ ${lastIP} hala çalışıyor`);
             return NextResponse.json({
               success: true,
-              method: "serial",
+              method: lastMethod,
               bestMethod: {
-                connectionType: "serial",
+                connectionType: lastMethod,
                 details: { path: lastIP },
                 testResult: testResult.message,
               },
               allResults: [],
-              message: `Serial bağlantısı aktif: ${lastIP}`,
+              message: `${lastMethod.toUpperCase()} bağlantısı aktif: ${lastIP}`,
             });
           }
         } catch (err) {

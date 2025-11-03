@@ -41,6 +41,7 @@ export default function TextPrintPanel() {
   const [topSpacing, setTopSpacing] = useState(2); // Üst boşluk (satır sayısı)
   const [bottomSpacing, setBottomSpacing] = useState(3); // Alt boşluk (satır sayısı)
   const [printing, setPrinting] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const { toast } = useToast();
 
   const handlePrint = async () => {
@@ -50,6 +51,12 @@ export default function TextPrintPanel() {
         description: "Lütfen yazdırılacak metni girin.",
         variant: "destructive",
       });
+      return;
+    }
+
+    // Sonsuz döngüyü önle - sadece 1 kez yeniden dene
+    if (retrying) {
+      console.log("⏭️ Zaten yeniden deneme yapılıyor, atlanıyor...");
       return;
     }
 
@@ -96,6 +103,9 @@ export default function TextPrintPanel() {
           description: data.message || "Metin başarıyla yazdırıldı!",
         });
         
+        // Başarılı yazdırma - retry flag'i sıfırla
+        setRetrying(false);
+        
         // Yazdırma sonrası durum kontrolü tetikle
         window.dispatchEvent(new CustomEvent('printer-status-refresh'));
       } else {
@@ -106,9 +116,34 @@ export default function TextPrintPanel() {
       
       toast({
         title: "❌ Yazdırma Hatası",
-        description: error.message || "Bilinmeyen bir hata oluştu",
+        description: "Bağlantı koptu, yazıcı aranıyor...",
         variant: "destructive",
       });
+      
+      // Hata durumunda yazıcı taramasını yeniden başlat
+      window.dispatchEvent(new CustomEvent('printer-connection-lost'));
+      
+      // Sadece ilk hata için yeniden dene
+      if (!retrying) {
+        setRetrying(true);
+        
+        // 3 saniye sonra tekrar dene
+        setTimeout(async () => {
+          toast({
+            title: "🔄 Yeniden Deneniyor",
+            description: "Yazıcı bulundu mu kontrol ediliyor...",
+          });
+          
+          // Tekrar yazdırmayı dene
+          await handlePrint();
+          
+          // Yeniden deneme bitti
+          setRetrying(false);
+        }, 3000);
+      } else {
+        console.log("⚠️ Zaten yeniden deneme yapıldı, tekrar deneme yapılmıyor");
+        setRetrying(false);
+      }
     } finally {
       setPrinting(false);
       printingToast.dismiss?.();

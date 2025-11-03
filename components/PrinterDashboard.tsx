@@ -31,11 +31,74 @@ export default function PrinterDashboard() {
     details: null as any,
   });
   const [isChecking, setIsChecking] = useState(false);
+  const [scanInterval, setScanInterval] = useState<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
     checkPrinterStatus();
+    
+    // Event listener'ları ekle
+    const handleRefresh = () => {
+      console.log("🔄 Durum yenileme isteği alındı");
+      checkPrinterStatus();
+    };
+    
+    const handleConnectionLost = () => {
+      console.log("⚠️ Bağlantı kopması bildirimi alındı");
+      // Bağlantıyı kopuk olarak işaretle
+      setPrinterStatus(prev => ({
+        ...prev,
+        connected: false,
+        message: "Bağlantı koptu, yeniden aranıyor...",
+      }));
+      
+      // Periyodik taramayı başlat
+      if (!scanInterval) {
+        startPeriodicScan();
+      }
+      
+      // Hemen bir kontrol yap
+      checkPrinterStatus();
+    };
+    
+    window.addEventListener('printer-status-refresh', handleRefresh);
+    window.addEventListener('printer-connection-lost', handleConnectionLost);
+    
+    // Component unmount olduğunda temizle
+    return () => {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+      }
+      window.removeEventListener('printer-status-refresh', handleRefresh);
+      window.removeEventListener('printer-connection-lost', handleConnectionLost);
+    };
   }, []);
+
+  // Periyodik taramayı başlat (10 saniyede bir)
+  const startPeriodicScan = () => {
+    // Önce varolan interval'i temizle
+    if (scanInterval) {
+      clearInterval(scanInterval);
+    }
+
+    console.log("🔄 Periyodik tarama başlatıldı (10 saniyede bir)");
+    
+    const interval = setInterval(() => {
+      console.log("⏰ Periyodik tarama zamanı...");
+      checkPrinterStatus();
+    }, 10000); // 10 saniye
+    
+    setScanInterval(interval);
+  };
+
+  // Periyodik taramayı durdur
+  const stopPeriodicScan = () => {
+    if (scanInterval) {
+      clearInterval(scanInterval);
+      setScanInterval(null);
+      console.log("⏸️ Periyodik tarama durduruldu");
+    }
+  };
 
   const checkPrinterStatus = async () => {
     // Eğer zaten kontrol yapılıyorsa, yenisini başlatma
@@ -52,40 +115,66 @@ export default function PrinterDashboard() {
     }));
 
     try {
-      const response = await fetch("/api/printer/auto-detect");
+      // Son bilinen bağlantı bilgilerini ekle (hızlı kontrol için)
+      const lastMethod = printerStatus.connected ? printerStatus.type : "";
+      const lastIP = printerStatus.details?.path || printerStatus.details?.ip || "";
+      
+      const url = new URL("/api/printer/auto-detect", window.location.origin);
+      if (printerStatus.connected && lastMethod && lastIP) {
+        url.searchParams.set("quick", "true");
+        url.searchParams.set("lastMethod", lastMethod);
+        url.searchParams.set("lastIP", lastIP);
+      }
+      
+      const response = await fetch(url.toString());
       const data = await response.json();
 
       console.log("Yazıcı durum yanıtı:", data);
 
+      const wasConnected = printerStatus.connected;
+      const isNowConnected = data.success;
+
       setPrinterStatus({
-        connected: data.success,
+        connected: isNowConnected,
         type: data.method || "unknown",
         loading: false,
         message: data.message || (data.success ? "Bağlantı başarılı" : "Yazıcı bulunamadı"),
         details: data.bestMethod?.details || null,
       });
 
-      if (data.success) {
-        // Sadece ilk bağlantıda toast göster, periyodik kontrollerde gösterme
-        if (!printerStatus.connected) {
+      if (isNowConnected) {
+        // Bağlantı bulundu - taramayı durdur
+        if (!wasConnected) {
+          // İlk kez bağlandı
           toast({
-            title: "✅ Yazıcı Hazır",
+            title: "✅ Yazıcı Bulundu",
             description: data.message || `${data.method} üzerinden bağlantı sağlandı.`,
             variant: "default",
           });
+          
+          // Periyodik taramayı durdur
+          stopPeriodicScan();
         }
       } else {
-        // Sadece bağlantı yeni koptuğunda toast göster
-        if (printerStatus.connected) {
+        // Bağlantı yok - taramayı başlat
+        if (wasConnected) {
+          // Bağlantı koptu
           toast({
             title: "⚠️ Bağlantı Kesildi",
-            description: "Yazıcı bağlantısı koptu. Yeniden bağlanılıyor...",
+            description: "Yazıcı bağlantısı koptu. Yeniden aranıyor...",
             variant: "destructive",
           });
+        }
+        
+        // Periyodik taramayı başlat (eğer başlatılmamışsa)
+        if (!scanInterval) {
+          startPeriodicScan();
         }
       }
     } catch (error: any) {
       console.error("Yazıcı durum kontrolü hatası:", error);
+      
+      const wasConnected = printerStatus.connected;
       
       setPrinterStatus({
         connected: false,
@@ -96,12 +185,17 @@ export default function PrinterDashboard() {
       });
 
       // Sadece önceden bağlıysa hata toast'u göster
-      if (printerStatus.connected) {
+      if (wasConnected) {
         toast({
           title: "❌ Bağlantı Hatası",
           description: error.message || "Yazıcı durumu kontrol edilemedi.",
           variant: "destructive",
         });
+      }
+      
+      // Hata durumunda da taramayı başlat
+      if (!scanInterval) {
+        startPeriodicScan();
       }
     } finally {
       setIsChecking(false);

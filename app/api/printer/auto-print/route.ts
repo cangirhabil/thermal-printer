@@ -188,12 +188,11 @@ async function trySerialPorts(
   # Görsel yazdır
   Write-Host "Gorsel yazdiriliyor: ${imageWidth}x${imageHeight}"
   $imageCommand = [byte[]](0x1D, 0x76, 0x30, 0x00, ${xL}, ${xH}, ${yL}, ${yH})
-  $port.Write($imageCommand, 0, $imageCommand.Length)
-  Start-Sleep -Milliseconds 100
+  Write-AndFlush $imageCommand
   
   $bitmapData = [System.IO.File]::ReadAllBytes("${bitmapPath.replace(/\\/g, "\\\\")}")
-  $port.Write($bitmapData, 0, $bitmapData.Length)
-  Start-Sleep -Milliseconds 200
+  Write-AndFlush $bitmapData
+  Start-Sleep -Milliseconds 100
 `;
         }
 
@@ -241,63 +240,54 @@ async function trySerialPorts(
   # Metin yazdır
   # Üst boşluk
   $topSpaceBytes = [byte[]](0x1B, 0x64, ${topSpacing})
-  $port.Write($topSpaceBytes, 0, $topSpaceBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $topSpaceBytes
   
   # Sol kenar
   $leftMarginBytes = [byte[]](0x1D, 0x4C, ${leftMarginL}, ${leftMarginH})
-  $port.Write($leftMarginBytes, 0, $leftMarginBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $leftMarginBytes
   
   # Satır aralığı
   $lineSpacingBytes = [byte[]](0x1B, 0x33, ${lineSpacingHex})
-  $port.Write($lineSpacingBytes, 0, $lineSpacingBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $lineSpacingBytes
   
   # Font tipi
   $fontBytes = [byte[]](0x1B, 0x4D, ${fontCode})
-  $port.Write($fontBytes, 0, $fontBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $fontBytes
   
   # Hizalama
   $alignBytes = [byte[]](0x1B, 0x61, ${alignCode})
-  $port.Write($alignBytes, 0, $alignBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $alignBytes
   
   # Kalın yazı
   $boldBytes = [byte[]](0x1B, 0x45, ${boldCode})
-  $port.Write($boldBytes, 0, $boldBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $boldBytes
   
   # Altı çizili
   $underlineBytes = [byte[]](0x1B, 0x2D, ${underlineCode})
-  $port.Write($underlineBytes, 0, $underlineBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $underlineBytes
   
   # Metin boyutu
   $textSizeBytes = [byte[]](0x1D, 0x21, ${sizeCode})
-  $port.Write($textSizeBytes, 0, $textSizeBytes.Length)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush $textSizeBytes
   
   # Metni yazdır
   $textBytes = [System.Text.Encoding]::GetEncoding(857).GetBytes("${escapedText}\n")
-  $port.Write($textBytes, 0, $textBytes.Length)
-  Start-Sleep -Milliseconds 100
+  Write-AndFlush $textBytes
+  Start-Sleep -Milliseconds 50
   
   # Ayarları sıfırla
-  $port.Write([byte[]](0x1D, 0x21, 0x00), 0, 3)
-  $port.Write([byte[]](0x1B, 0x45, 0x00), 0, 3)
-  $port.Write([byte[]](0x1B, 0x2D, 0x00), 0, 3)
-  $port.Write([byte[]](0x1B, 0x61, 0x00), 0, 3)
-  $port.Write([byte[]](0x1B, 0x4D, 0x00), 0, 3)
-  $port.Write([byte[]](0x1B, 0x32), 0, 2)
-  $port.Write([byte[]](0x1D, 0x4C, 0x00, 0x00), 0, 4)
-  Start-Sleep -Milliseconds 50
+  Write-AndFlush ([byte[]](0x1D, 0x21, 0x00))
+  Write-AndFlush ([byte[]](0x1B, 0x45, 0x00))
+  Write-AndFlush ([byte[]](0x1B, 0x2D, 0x00))
+  Write-AndFlush ([byte[]](0x1B, 0x61, 0x00))
+  Write-AndFlush ([byte[]](0x1B, 0x4D, 0x00))
+  Write-AndFlush ([byte[]](0x1B, 0x32))
+  Write-AndFlush ([byte[]](0x1D, 0x4C, 0x00, 0x00))
   
   # Alt boşluk
   $bottomSpaceBytes = [byte[]](0x1B, 0x64, ${bottomSpacing})
-  $port.Write($bottomSpaceBytes, 0, $bottomSpaceBytes.Length)
-  Start-Sleep -Milliseconds 100
+  Write-AndFlush $bottomSpaceBytes
+  Start-Sleep -Milliseconds 50
 `;
         }
 
@@ -317,25 +307,36 @@ try {
         exit 1
     }
     
+    # Veri yazma ve buffer'ın boşalmasını bekleme fonksiyonu
+    function Write-AndFlush {
+        param($bytes)
+        $port.Write($bytes, 0, $bytes.Length)
+        $port.BaseStream.Flush()
+        Start-Sleep -Milliseconds 50
+    }
+    
     # Initialize
     $initBytes = [byte[]](${escInit.split(" ").map(b => `0x${b}`).join(", ")})
-    $port.Write($initBytes, 0, $initBytes.Length)
-    Start-Sleep -Milliseconds 50
-    ${imageCommands}${textCommands}
+    Write-AndFlush $initBytes
+    ${imageCommands.replace(/\$port\.Write\(/g, "Write-AndFlush ")}${textCommands.replace(/\$port\.Write\(/g, "Write-AndFlush ")}
     # Kağıt ilerletme
     $feedBytes = [byte[]](0x1B, 0x64, 0x05)
-    $port.Write($feedBytes, 0, $feedBytes.Length)
+    Write-AndFlush $feedBytes
     Start-Sleep -Milliseconds 200
     
     # Cut paper
     $cutBytes = [byte[]](${cutPaper.split(" ").map(b => `0x${b}`).join(", ")})
-    $port.Write($cutBytes, 0, $cutBytes.Length)
+    Write-AndFlush $cutBytes
     Start-Sleep -Milliseconds 300
     
     # Ekstra feed
     $finalFeedBytes = [byte[]](0x1B, 0x64, 0x03)
-    $port.Write($finalFeedBytes, 0, $finalFeedBytes.Length)
+    Write-AndFlush $finalFeedBytes
     Start-Sleep -Milliseconds 200
+    
+    # Tüm verilerin gitmesini garantile
+    $port.BaseStream.Flush()
+    Start-Sleep -Milliseconds 100
     
     $port.Close()
     Write-Output "SUCCESS"
@@ -417,9 +418,24 @@ async function tryNetwork(
           socket.connect(port, ip);
         });
 
+        // Buffer flush yardımcı fonksiyonu
+        const writeAndFlush = async (data: Uint8Array | Buffer) => {
+          return new Promise<void>((resolve, reject) => {
+            const bufferData = data instanceof Buffer ? Uint8Array.from(data) : data;
+            socket.write(bufferData, (err) => {
+              if (err) {
+                reject(err);
+              } else {
+                // Verinin tamamen gönderilmesini bekle
+                setTimeout(() => resolve(), 50);
+              }
+            });
+          });
+        };
+
         // Bağlantı başarılı, yazdır
         const escInit = new Uint8Array([0x1b, 0x40]); // ESC @
-        socket.write(escInit);
+        await writeAndFlush(escInit);
 
         // Görsel
         if (imageData) {
@@ -485,43 +501,46 @@ async function tryNetwork(
           const yH = (height >> 8) & 0xff;
 
           const imageCommand = new Uint8Array([0x1d, 0x76, 0x30, 0x00, xL, xH, yL, yH]);
-          socket.write(imageCommand);
-          socket.write(Uint8Array.from(bitmapBuffer));
+          await writeAndFlush(imageCommand);
+          await writeAndFlush(Uint8Array.from(bitmapBuffer));
+          
+          // Görsel gönderildikten sonra ekstra bekleme
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         // Metin
         if (textData && textData.trim().length > 0) {
           // Üst boşluk
           const topSpacing = textOptions?.topSpacing || 2;
-          socket.write(new Uint8Array([0x1b, 0x64, topSpacing]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x64, topSpacing]));
 
           // Sol kenar
           const leftMargin = textOptions?.leftMargin || 0;
           const leftMarginL = leftMargin & 0xff;
           const leftMarginH = (leftMargin >> 8) & 0xff;
-          socket.write(new Uint8Array([0x1d, 0x4c, leftMarginL, leftMarginH]));
+          await writeAndFlush(new Uint8Array([0x1d, 0x4c, leftMarginL, leftMarginH]));
 
           // Satır aralığı
           const lineSpacing = textOptions?.lineSpacing || 30;
-          socket.write(new Uint8Array([0x1b, 0x33, lineSpacing]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x33, lineSpacing]));
 
           // Font tipi
           const fontCode = textOptions?.fontType === "B" ? 0x01 : 0x00;
-          socket.write(new Uint8Array([0x1b, 0x4d, fontCode]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x4d, fontCode]));
 
           // Hizalama
           let alignCode = 0x00;
           if (textOptions?.alignment === "center") alignCode = 0x01;
           else if (textOptions?.alignment === "right") alignCode = 0x02;
-          socket.write(new Uint8Array([0x1b, 0x61, alignCode]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x61, alignCode]));
 
           // Kalın
           const boldCode = textOptions?.bold ? 0x01 : 0x00;
-          socket.write(new Uint8Array([0x1b, 0x45, boldCode]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x45, boldCode]));
 
           // Altı çizili
           const underlineCode = textOptions?.underline ? 0x01 : 0x00;
-          socket.write(new Uint8Array([0x1b, 0x2d, underlineCode]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x2d, underlineCode]));
 
           // Boyut
           let sizeCode = 0x11;
@@ -529,32 +548,37 @@ async function tryNetwork(
           else if (textOptions?.fontSize === "normal") sizeCode = 0x11;
           else if (textOptions?.fontSize === "large") sizeCode = 0x22;
           else if (textOptions?.fontSize === "xlarge") sizeCode = 0x33;
-          socket.write(new Uint8Array([0x1d, 0x21, sizeCode]));
+          await writeAndFlush(new Uint8Array([0x1d, 0x21, sizeCode]));
 
           // Metin
           const textEncoder = new TextEncoder();
-          socket.write(textEncoder.encode(textData + "\n"));
+          await writeAndFlush(textEncoder.encode(textData + "\n"));
 
           // Sıfırla
-          socket.write(new Uint8Array([0x1d, 0x21, 0x00]));
-          socket.write(new Uint8Array([0x1b, 0x45, 0x00]));
-          socket.write(new Uint8Array([0x1b, 0x2d, 0x00]));
-          socket.write(new Uint8Array([0x1b, 0x61, 0x00]));
-          socket.write(new Uint8Array([0x1b, 0x4d, 0x00]));
-          socket.write(new Uint8Array([0x1b, 0x32]));
-          socket.write(new Uint8Array([0x1d, 0x4c, 0x00, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1d, 0x21, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x45, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x2d, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x61, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x4d, 0x00]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x32]));
+          await writeAndFlush(new Uint8Array([0x1d, 0x4c, 0x00, 0x00]));
 
           // Alt boşluk
           const bottomSpacing = textOptions?.bottomSpacing || 3;
-          socket.write(new Uint8Array([0x1b, 0x64, bottomSpacing]));
+          await writeAndFlush(new Uint8Array([0x1b, 0x64, bottomSpacing]));
         }
 
         // Kağıt ilerlet ve kes
-        socket.write(new Uint8Array([0x1b, 0x64, 0x05]));
-        socket.write(new Uint8Array([0x1d, 0x56, 0x00]));
-        socket.write(new Uint8Array([0x1b, 0x64, 0x03]));
+        await writeAndFlush(new Uint8Array([0x1b, 0x64, 0x05]));
+        await writeAndFlush(new Uint8Array([0x1d, 0x56, 0x00]));
+        await writeAndFlush(new Uint8Array([0x1b, 0x64, 0x03]));
 
-        socket.end();
+        // Tüm verilerin gönderildiğinden emin ol
+        await new Promise<void>((resolve) => {
+          socket.end(() => {
+            resolve();
+          });
+        });
 
         console.log(`✅ Network ${ip}:${port} başarılı!`);
         return {

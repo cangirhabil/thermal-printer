@@ -208,10 +208,7 @@ export default function PrinterStatusCard({
             Yenile
           </Button>
         </CardTitle>
-        {/* Otomatik kontrol bilgisi */}
-        <div className="text-xs text-muted-foreground mt-1">
-          ⏱️ Otomatik kontrol: {nextCheckIn}s
-        </div>
+       
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Durum İkonu */}

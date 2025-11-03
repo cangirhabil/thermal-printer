@@ -201,15 +201,28 @@ export default function ConnectionSelector({
       {/* Network Ayarları */}
       {settings.connectionType === "network" && (
         <div className="space-y-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+            <div className="flex items-start space-x-3">
+              <svg className="w-5 h-5 text-blue-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-sm text-blue-700 dark:text-blue-300">
+                <p className="font-medium mb-1">🔍 Otomatik Ağ Taraması</p>
+                <p>KP-302H model yazıcı ağınızda otomatik olarak aranacak ve bulunacaktır.</p>
+                <p className="mt-1 text-xs">İsteğe bağlı olarak IP adresini manuel girebilirsiniz.</p>
+                <p className="mt-2 text-xs font-medium">⚠️ Not: Seri numarası kontrolü yapılmaz, sadece model ismi kontrol edilir.</p>
+              </div>
+            </div>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              IP Adresi
+              IP Adresi (Opsiyonel - Otomatik bulunacak)
             </label>
             <input
               type="text"
-              value={settings.networkIp || "192.168.2.211"}
+              value={settings.networkIp || ""}
               onChange={(e) => handleNetworkChange("networkIp", e.target.value)}
-              placeholder="192.168.2.211"
+              placeholder="Otomatik (veya örn: 192.168.1.100)"
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             />
           </div>

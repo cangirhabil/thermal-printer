@@ -93,12 +93,16 @@ export default function ImagePrintPanel() {
     }
 
     setPrinting(true);
-    toast({
-      title: "Yazdırılıyor",
-      description: "Yazıcı algılanıyor ve görsel yazdırılıyor...",
+    
+    const printingToast = toast({
+      title: "🔍 Yazıcı Aranıyor",
+      description: "Yazıcı algılanıyor, lütfen bekleyin...",
+      duration: 60000, // 60 saniye
     });
 
     try {
+      console.log("🖨️ Görsel yazdırma başlatılıyor...");
+      
       const response = await fetch("/api/printer/auto-print", {
         method: "POST",
         headers: {
@@ -108,23 +112,31 @@ export default function ImagePrintPanel() {
       });
 
       const data = await response.json();
+      
+      console.log("Yazdırma yanıtı:", data);
 
       if (data.success) {
         toast({
-          title: "Başarılı",
+          title: "✅ Başarılı",
           description: data.message || "Görsel başarıyla yazdırıldı!",
         });
+        
+        // Yazdırma sonrası durum kontrolü tetikle (yeni bağlantı tipini algılamak için)
+        window.dispatchEvent(new CustomEvent('printer-status-refresh'));
       } else {
         throw new Error(data.error || "Yazdırma başarısız");
       }
     } catch (error: any) {
+      console.error("Yazdırma hatası:", error);
+      
       toast({
-        title: "Yazdırma Hatası",
-        description: error.message,
+        title: "❌ Yazdırma Hatası",
+        description: error.message || "Bilinmeyen bir hata oluştu",
         variant: "destructive",
       });
     } finally {
       setPrinting(false);
+      printingToast.dismiss?.();
     }
   };
 

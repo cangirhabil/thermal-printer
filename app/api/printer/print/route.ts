@@ -55,13 +55,13 @@ export async function POST(request: NextRequest) {
 
     const { ThermalPrinter, PrinterTypes } = printerLib;
 
-    // KP-301H Yazıcı yapılandırması
-    // KP-301H: 80mm termal yazıcı, ESC/POS protokolü
+    // KP-302H Yazıcı yapılandırması
+    // KP-302H: 80mm termal yazıcı, ESC/POS protokolü
     // Paper width: 80mm ±0.5mm
     // Printing width: 72mm (576 dots)
     // Resolution: 203 DPI (8 dots/mm)
     let printerConfig: any = {
-      type: PrinterTypes.EPSON, // KP-301H ESC/POS uyumlu
+      type: PrinterTypes.EPSON, // KP-302H ESC/POS uyumlu
       interface: "",
       width: 48, // 80mm = 576 dots ÷ 12 = 48 karakter/satır
       characterSet: "PC857_TURKISH", // Türkçe karakter desteği (Code Page 857)
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     const base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, "base64");
 
-    // KP-301H için görsel işleme
+    // KP-302H için görsel işleme
     // Çözünürlük: 203 DPI (8 dots/mm)
     // Yazdırma genişliği: 72mm = 576 dots
     // Optimal görsel: 576x[yükseklik] piksel, siyah-beyaz

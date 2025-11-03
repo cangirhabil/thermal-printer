@@ -27,7 +27,10 @@ export default function PrinterDashboard() {
     connected: false,
     type: "unknown",
     loading: true,
+    message: "",
+    details: null as any,
   });
+  const [isChecking, setIsChecking] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -35,29 +38,73 @@ export default function PrinterDashboard() {
   }, []);
 
   const checkPrinterStatus = async () => {
+    // Eğer zaten kontrol yapılıyorsa, yenisini başlatma
+    if (isChecking) {
+      console.log("⏭️ Zaten kontrol yapılıyor, atlanıyor...");
+      return;
+    }
+
+    setIsChecking(true);
+    setPrinterStatus(prev => ({
+      ...prev,
+      loading: true,
+      message: "Yazıcı aranıyor...",
+    }));
+
     try {
       const response = await fetch("/api/printer/auto-detect");
       const data = await response.json();
+
+      console.log("Yazıcı durum yanıtı:", data);
 
       setPrinterStatus({
         connected: data.success,
         type: data.method || "unknown",
         loading: false,
+        message: data.message || (data.success ? "Bağlantı başarılı" : "Yazıcı bulunamadı"),
+        details: data.bestMethod?.details || null,
       });
 
       if (data.success) {
-        toast({
-          title: "Yazıcı Hazır",
-          description: `${data.method} üzerinden bağlantı sağlandı.`,
-          variant: "default",
-        });
+        // Sadece ilk bağlantıda toast göster, periyodik kontrollerde gösterme
+        if (!printerStatus.connected) {
+          toast({
+            title: "✅ Yazıcı Hazır",
+            description: data.message || `${data.method} üzerinden bağlantı sağlandı.`,
+            variant: "default",
+          });
+        }
+      } else {
+        // Sadece bağlantı yeni koptuğunda toast göster
+        if (printerStatus.connected) {
+          toast({
+            title: "⚠️ Bağlantı Kesildi",
+            description: "Yazıcı bağlantısı koptu. Yeniden bağlanılıyor...",
+            variant: "destructive",
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Yazıcı durum kontrolü hatası:", error);
+      
       setPrinterStatus({
         connected: false,
         type: "unknown",
         loading: false,
+        message: "Bağlantı hatası",
+        details: null,
       });
+
+      // Sadece önceden bağlıysa hata toast'u göster
+      if (printerStatus.connected) {
+        toast({
+          title: "❌ Bağlantı Hatası",
+          description: error.message || "Yazıcı durumu kontrol edilemedi.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsChecking(false);
     }
   };
 

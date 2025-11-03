@@ -71,34 +71,46 @@ export default function PrinterSettingsPanel({
   };
 
   const testConnection = async () => {
-    toast({
-      title: "Bağlantı Test Ediliyor",
-      description: "Yazıcı bağlantısı kontrol ediliyor...",
+    setLoading(true);
+    
+    const testToast = toast({
+      title: "🔍 Bağlantı Test Ediliyor",
+      description: "Yazıcı aranıyor... Bu biraz zaman alabilir.",
+      duration: 60000, // 60 saniye
     });
 
     try {
+      console.log("🔍 Otomatik algılama başlatılıyor...");
+      
       const response = await fetch("/api/printer/auto-detect");
       const data = await response.json();
 
+      console.log("Algılama sonucu:", data);
+
       if (data.success) {
         toast({
-          title: "Bağlantı Başarılı",
-          description: `${data.method} üzerinden bağlantı kuruldu.`,
+          title: "✅ Bağlantı Başarılı",
+          description: data.message || `${data.method} üzerinden bağlantı kuruldu.`,
         });
         onSettingsChange?.();
       } else {
         toast({
-          title: "Bağlantı Başarısız",
-          description: "Yazıcı bulunamadı.",
+          title: "⚠️ Bağlantı Başarısız",
+          description: data.message || data.error || "Yazıcı bulunamadı.",
           variant: "destructive",
         });
       }
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Bağlantı testi hatası:", error);
+      
       toast({
-        title: "Test Hatası",
-        description: "Bağlantı test edilemedi.",
+        title: "❌ Test Hatası",
+        description: error.message || "Bağlantı test edilemedi.",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
+      testToast.dismiss?.();
     }
   };
 
@@ -269,7 +281,7 @@ export default function PrinterSettingsPanel({
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="space-y-1">
               <p className="text-muted-foreground">Model</p>
-              <p className="font-medium">KP-301H</p>
+              <p className="font-medium">KP-302H</p>
             </div>
             <div className="space-y-1">
               <p className="text-muted-foreground">Kağıt</p>

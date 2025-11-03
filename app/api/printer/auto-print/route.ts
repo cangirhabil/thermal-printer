@@ -82,10 +82,21 @@ async function trySerialPorts(
 
     console.log(`🔍 ${ports.length} serial port bulundu`);
 
+    // COM1'i filtrele (genellikle mouse/klavye)
+    const validPorts = ports.filter(p => p.path.toLowerCase() !== 'com1');
+    console.log(`✅ ${validPorts.length} geçerli port (COM1 atlandı)`);
+
+    // COM3'ü önceliklendir
+    const sortedPorts = validPorts.sort((a, b) => {
+      if (a.path.toLowerCase() === 'com3') return -1;
+      if (b.path.toLowerCase() === 'com3') return 1;
+      return 0;
+    });
+
     // Her portu dene
-    for (const portInfo of ports) {
+    for (const portInfo of sortedPorts) {
       const portPath = portInfo.path;
-      console.log(`🔌 Port deneniyor: ${portPath}`);
+      console.log(`🔌 Port deneniyor: ${portPath}${portPath.toLowerCase() === 'com3' ? ' (Öncelikli)' : ''}`);
 
       try {
         // Görsel işleme
@@ -566,22 +577,22 @@ export async function POST(request: NextRequest) {
         bottomSpacing: textOptions.bottomSpacing || 3,
       });
     }
-    console.log("Öncelik: 1) COM Port  2) Ethernet");
+    console.log("Öncelik: 1) COM Port (COM3)  2) Serial (Diğer)  3) Network (LAN)");
     console.log("Kütüphane: PowerShell + Raw ESC/POS + TCP Socket");
     console.log("========================================");
 
     const attempts: PrintAttempt[] = [];
 
     // ==========================================
-    // ÖNCELİK 1: COM PORT (Serial) - TEK YÖNTEM
+    // ÖNCELİK 1: COM PORT (Serial) - COM3 ÖNCELİKLİ
     // ==========================================
-    console.log("\n🔌 ÖNCELİK 1: COM PORT BAĞLANTISI");
+    console.log("\n🔌 ÖNCELİK 1: COM PORT BAĞLANTISI (COM3 öncelikli)");
     console.log("========================================");
 
     const serialResult = await trySerialPorts(imageData, textData, textOptions);
     attempts.push(serialResult);
     if (serialResult.success) {
-      console.log("✅ COM PORT BAĞLANTISI BAŞARILI!");
+      console.log("✅ COM/SERIAL PORT BAĞLANTISI BAŞARILI!");
       console.log(`   Port: ${serialResult.details}`);
       return NextResponse.json({
         success: true,
@@ -594,10 +605,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    console.log("\n❌ COM PORT MÜSAİT DEĞİL");
+    console.log("\n❌ COM/SERIAL PORT MÜSAİT DEĞİL - Network (LAN) deneniyor...");
 
     // ==========================================
-    // ÖNCELİK 2: ETHERNET BAĞLANTISI
+    // ÖNCELİK 2: NETWORK (LAN) BAĞLANTISI
+    // ==========================================
+    console.log("\n🌐 ÖNCELİK 2: NETWORK (LAN) BAĞLANTISI");
+    console.log("========================================");
     // ==========================================
     console.log("\n🌐 ÖNCELİK 2: ETHERNET BAĞLANTISI");
     console.log("========================================");
@@ -605,20 +619,20 @@ export async function POST(request: NextRequest) {
     const networkResult = await tryNetwork(imageData, textData, textOptions);
     attempts.push(networkResult);
     if (networkResult.success) {
-      console.log("✅ ETHERNET BAĞLANTISI BAŞARILI!");
+      console.log("✅ NETWORK (LAN) BAĞLANTISI BAŞARILI!");
       console.log(`   Adres: ${networkResult.details}`);
       return NextResponse.json({
         success: true,
-        message: `✅ Ethernet üzerinden yazdırıldı: ${networkResult.details}`,
+        message: `✅ Network (LAN) üzerinden yazdırıldı: ${networkResult.details}`,
         method: networkResult.method,
         details: networkResult.details,
-        connectionType: "Ethernet",
+        connectionType: "Network",
         priority: 2,
         attempts,
       });
     }
 
-    console.log("\n❌ ETHERNET BAĞLANTISI MÜSAİT DEĞİL");
+    console.log("\n❌ NETWORK (LAN) BAĞLANTISI MÜSAİT DEĞİL");
 
     // ==========================================
     // YAZDIRMA BAŞARISIZ
@@ -636,13 +650,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: false,
-      error: "Yazıcı bulunamadı - COM Port ve Ethernet bağlantısı müsait değil",
+      error: "Yazıcı bulunamadı - COM Port ve Network (LAN) bağlantısı müsait değil",
       attempts,
       troubleshooting: {
         comPort:
           "USB kablosu takılı mı? Cihaz Yöneticisi'nde COM portu görünüyor mu?",
-        ethernet:
-          "Network kablosu bağlı mı? IP adresi doğru mu? (192.168.2.211)",
+        network:
+          "Network kablosu bağlı mı? IP adresi doğru mu?",
       },
     });
   } catch (error: any) {

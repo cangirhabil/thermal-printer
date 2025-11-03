@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "KP-301H Termal Yazıcı Kontrol Paneli",
-  description: "Termal yazıcı için görsel yazdırma paneli",
+  title: "KP-302H Termal Yazıcı Kontrol Paneli",
+  description: "KP-302H termal yazıcı için web tabanlı kontrol paneli - Otomatik ağ taraması",
 };
 
 export default function RootLayout({
